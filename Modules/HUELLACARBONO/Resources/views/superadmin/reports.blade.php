@@ -43,11 +43,11 @@
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Desde</label>
-                                <input type="date" name="start_date" min="{{ $dateMin }}" max="{{ $dateMax }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg" title="Solo hay registros entre {{ $dateMin }} y {{ $dateMax }}">
+                                <input type="date" name="start_date" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Hasta</label>
-                                <input type="date" name="end_date" min="{{ $dateMin }}" max="{{ $dateMax }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg" title="Solo hay registros entre {{ $dateMin }} y {{ $dateMax }}">
+                                <input type="date" name="end_date" max="{{ date('Y-m-d') }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                             </div>
                         </div>
                     </div>
@@ -126,7 +126,7 @@
                     
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Período</label>
-                        <select name="period" id="unitReportPeriod" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <select name="period" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                             <option value="current_month">Mes Actual</option>
                             <option value="last_month">Mes Anterior</option>
                             <option value="current_quarter">Trimestre Actual</option>
@@ -145,14 +145,14 @@
                     </div>
                 </div>
                 
-                <div id="unitCustomDates" class="hidden mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
+                <div id="unitCustomDates" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Desde</label>
-                        <input type="date" name="start_date" min="{{ $dateMin }}" max="{{ $dateMax }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg" title="Solo hay registros entre {{ $dateMin }} y {{ $dateMax }}">
+                        <input type="date" name="start_date" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Hasta</label>
-                        <input type="date" name="end_date" min="{{ $dateMin }}" max="{{ $dateMax }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg" title="Solo hay registros entre {{ $dateMin }} y {{ $dateMax }}">
+                        <input type="date" name="end_date" max="{{ date('Y-m-d') }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                     </div>
                 </div>
             </form>
@@ -202,8 +202,8 @@
 
 @section('script')
 <script>
-// Mostrar/ocultar fechas personalizadas (Reporte General)
-$('#generalReportForm select[name="period"]').on('change', function() {
+// Mostrar/ocultar fechas personalizadas
+$('select[name="period"]').on('change', function() {
     if ($(this).val() === 'custom') {
         $('#customDates').removeClass('hidden');
     } else {
@@ -211,81 +211,31 @@ $('#generalReportForm select[name="period"]').on('change', function() {
     }
 });
 
-// Mostrar/ocultar fechas personalizadas (Reporte por Unidad)
-$('#unitReportPeriod').on('change', function() {
-    if ($(this).val() === 'custom') {
-        $('#unitCustomDates').removeClass('hidden');
-    } else {
-        $('#unitCustomDates').addClass('hidden');
-    }
-});
-
-// Descarga en la misma página: fetch + blob + link, sin abrir otra pestaña
-function downloadReportInPage(url, buttonEl, successMessage) {
-    var btn = buttonEl && (buttonEl.jquery ? buttonEl[0] : buttonEl);
-    var origHtml = btn ? btn.innerHTML : '';
-    var origDisabled = btn ? btn.disabled : false;
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Generando...';
-    }
-    if (typeof showToast === 'function') showToast('info', 'Generando reporte... No cierre esta página.');
-    fetch(url, { method: 'GET', credentials: 'same-origin' })
-        .then(function(res) {
-            var ct = (res.headers.get('content-type') || '').toLowerCase();
-            if (!res.ok) {
-                if (typeof showToast === 'function') showToast('error', 'Error al generar el reporte');
-                return;
-            }
-            if (ct.indexOf('application/pdf') !== -1 || ct.indexOf('application/vnd.openxmlformats') !== -1 || ct.indexOf('application/vnd.ms-excel') !== -1) {
-                return res.blob().then(function(blob) {
-                    var disp = res.headers.get('content-disposition') || '';
-                    var match = disp.match(/filename[*]?=(?:UTF-8'')?["']?([^"'\s]+)["']?/i) || disp.match(/filename=([^;]+)/);
-                    var filename = (match && match[1]) ? match[1].trim() : (ct.indexOf('pdf') !== -1 ? 'reporte.pdf' : 'reporte.xlsx');
-                    var a = document.createElement('a');
-                    a.href = URL.createObjectURL(blob);
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(a.href);
-                    if (typeof showToast === 'function') showToast('success', successMessage || 'Descarga iniciada');
-                });
-            }
-            if (typeof showToast === 'function') showToast('warning', 'No hay datos para el período seleccionado');
-        })
-        .catch(function() {
-            if (typeof showToast === 'function') showToast('error', 'Error de conexión al generar el reporte');
-        })
-        .finally(function() {
-            if (btn) {
-                btn.disabled = origDisabled;
-                btn.innerHTML = origHtml;
-            }
-        });
-}
-
-// Form reporte general PDF
+// Form de reporte general PDF
 $('#generalReportForm').on('submit', function(e) {
     e.preventDefault();
-    var $btn = $(this).find('button[type=submit]');
-    if ($btn.prop('disabled')) return;
-    var formData = $(this).serialize();
-    var url = '{{ url("/huellacarbono/admin/reportes/exportar-pdf") }}?' + formData;
-    downloadReportInPage(url, $btn, 'PDF descargado');
+    
+    const formData = $(this).serialize();
+    
+    showToast('info', 'Generando reporte PDF...');
+    
+    window.open('/huellacarbono/admin/reportes/exportar-pdf?' + formData, '_blank');
+    
+    setTimeout(() => {
+        showToast('success', 'Reporte generado');
+    }, 1500);
 });
 
-// Form reporte Excel
+// Form de reporte Excel (data_type y period en la URL)
 $('#excelReportForm').on('submit', function(e) {
     e.preventDefault();
-    var $btn = $(this).find('button[type=submit]');
-    if ($btn.prop('disabled')) return;
     var formData = $(this).serialize();
-    var url = "{{ url('/huellacarbono/admin/reportes/exportar-excel') }}?" + formData;
-    downloadReportInPage(url, $btn, 'Excel descargado');
+    showToast('info', 'Generando reporte Excel...');
+    window.open("{{ url('/huellacarbono/admin/reportes/exportar-excel') }}?" + formData, '_blank');
+    setTimeout(function() { showToast('success', 'Reporte generado'); }, 1500);
 });
 
-// Form reporte por unidad
+// Form de reporte por unidad (sin depender de jQuery)
 (function() {
     var form = document.getElementById('unitReportForm');
     if (!form) return;
@@ -293,8 +243,6 @@ $('#excelReportForm').on('submit', function(e) {
     var baseExcel = "{{ url('/huellacarbono/admin/reportes/exportar-excel') }}";
     form.addEventListener('submit', function(e) {
         e.preventDefault();
-        var btn = form.querySelector('button[type=submit]');
-        if (btn && btn.disabled) return;
         var unitSelect = form.querySelector('select[name="unit_id"]');
         var formatSelect = form.querySelector('select[name="format"]');
         var periodSelect = form.querySelector('select[name="period"]');
@@ -313,13 +261,14 @@ $('#excelReportForm').on('submit', function(e) {
                 return;
             }
         }
+        if (typeof showToast === 'function') showToast('info', 'Generando reporte...');
         var params = new URLSearchParams({ unit_id: unitId, period: period });
         if (period === 'custom') {
             params.set('start_date', form.querySelector('input[name="start_date"]').value);
             params.set('end_date', form.querySelector('input[name="end_date"]').value);
         }
         var url = (format === 'pdf' ? basePdf : baseExcel) + '?' + params.toString();
-        downloadReportInPage(url, btn, (format === 'pdf' ? 'PDF' : 'Excel') + ' descargado');
+        window.open(url, '_blank');
     });
 })();
 </script>

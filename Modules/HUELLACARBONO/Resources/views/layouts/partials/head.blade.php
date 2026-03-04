@@ -29,17 +29,6 @@
     body {
       font-family: 'Inter', sans-serif;
     }
-    /* Bloqueo global de botones y enlaces mientras hay una tarea en curso (módulo Huella de Carbono: admin, líder, público) */
-    body.global-busy button:not(.no-disable),
-    body.global-busy [type="submit"]:not(.no-disable),
-    body.global-busy input[type="submit"]:not(.no-disable),
-    body.global-busy a.btn:not(.no-disable),
-    body.global-busy main a:not(.no-disable),
-    body.global-busy main button:not(.no-disable) {
-      pointer-events: none;
-      opacity: 0.7;
-      cursor: not-allowed;
-    }
   </style>
   
   <script>

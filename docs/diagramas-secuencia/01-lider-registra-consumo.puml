@@ -1,0 +1,47 @@
+@startuml secuencia_lider_registra_consumo
+!theme plain
+title Diagrama de Secuencia: Líder registra consumo diario
+
+actor "Líder" as Leader
+participant "Navegador" as Browser
+participant "LeaderController" as LC
+participant "ProductiveUnit" as PU
+participant "DailyConsumption" as DC
+participant "EmissionFactor" as EF
+
+Leader -> Browser : Envía formulario (fecha, factor, cantidad)
+Browser -> LC : POST storeConsumption(datos)
+activate LC
+
+LC -> LC : Validar request
+LC -> PU : where(leader_user_id = user.id)->first()
+activate PU
+PU --> LC : unit
+deactivate PU
+
+alt Sin unidad asignada
+  LC --> Browser : 403 Error
+else Unidad existe
+  LC -> DC : where(unit_id, factor_id, date)->first()
+  activate DC
+  DC --> LC : existing
+  deactivate DC
+
+  alt Ya existe registro (mismo factor + fecha)
+    LC --> Browser : 422 Ya existe registro
+  else No existe
+    LC -> DC : create(...)
+    activate DC
+    note right of DC : Event saving: calcula co2_generated\ncon EmissionFactor::calculateCO2
+    DC -> EF : factor, quantity, nitrogen%
+    activate EF
+    EF --> DC : co2
+    deactivate EF
+    DC --> LC : consumption
+    deactivate DC
+    LC --> Browser : 200 JSON (success, co2_generated)
+  end
+end
+deactivate LC
+
+@enduml

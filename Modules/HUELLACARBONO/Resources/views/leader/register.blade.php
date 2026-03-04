@@ -143,7 +143,7 @@ function addVariableRow() {
                         <span class="unit-display text-green-600 font-semibold"></span>
                     </label>
                     <input type="number" class="quantity-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" 
-                           step="0.001" min="0.001" placeholder="Ej: 1" required>
+                           step="0.001" min="0" placeholder="0" required>
                 </div>
             </div>
             
@@ -269,10 +269,7 @@ $(document).ready(function() {
 // Submit form
 $('#consumptionForm').on('submit', function(e) {
     e.preventDefault();
-    var $form = $(this);
-    var $btn = $form.find('button[type=submit]');
-    if ($btn.prop('disabled')) return;
-
+    
     // Recopilar datos de todas las variables
     const consumptionDate = $('#consumption_date').val();
     const variables = [];
@@ -296,9 +293,8 @@ $('#consumptionForm').on('submit', function(e) {
         showToast('error', 'Debes agregar al menos una variable');
         return;
     }
-
-    $btn.prop('disabled', true).data('orig-html', $btn.html()).html('<i class="fas fa-spinner fa-spin mr-2"></i> Guardando...');
     
+    // Enviar datos
     $.ajax({
         url: '{{ route("cefa.huellacarbono.leader.store_multiple_consumptions") }}',
         method: 'POST',
@@ -312,18 +308,24 @@ $('#consumptionForm').on('submit', function(e) {
         },
         success: function(response) {
             if(response.success) {
-                showToast('success', response.count + ' variable(s) registrada(s). Total: ' + response.total_co2 + ' kg CO₂');
-                setTimeout(function() {
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Registro Exitoso!',
+                    html: `
+                        <p class="mb-2">${response.count} variable(s) registrada(s)</p>
+                        <div class="bg-green-50 p-4 rounded-lg">
+                            <p class="text-2xl font-bold text-green-600">${response.total_co2} kg CO₂</p>
+                            <p class="text-sm text-gray-600">generados en total</p>
+                        </div>
+                    `,
+                    confirmButtonColor: '#10b981',
+                }).then(() => {
                     window.location.href = '{{ route("cefa.huellacarbono.leader.dashboard") }}';
-                }, 1500);
-            } else {
-                $btn.prop('disabled', false).html($btn.data('orig-html'));
+                });
             }
         },
         error: function(xhr) {
-            $btn.prop('disabled', false).html($btn.data('orig-html'));
-            const j = xhr.responseJSON;
-            const error = j?.error || (j?.errors && Object.values(j.errors).flat()[0]) || j?.message || 'Error al guardar el registro';
+            const error = xhr.responseJSON?.error || 'Error al guardar el registro';
             showToast('error', error);
         }
     });

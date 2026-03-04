@@ -93,8 +93,8 @@
                     </tbody>
                 </table>
             </div>
-            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                {{ $requests->links('huellacarbono::pagination.tailwind') }}
+            <div class="px-6 py-4 bg-gray-50">
+                {{ $requests->links() }}
             </div>
         </div>
 
@@ -184,11 +184,7 @@ function closeConfirmCard() {
 function doConfirmAction() {
     if (!pendingRequestId || !pendingAction) return;
     var url = pendingAction === 'approve' ? approveUrl.replace('__ID__', pendingRequestId) : rejectUrl.replace('__ID__', pendingRequestId);
-    var btn = confirmModalOk;
-    if (btn.disabled) return;
-    btn.disabled = true;
-    var origText = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Procesando...';
+    closeConfirmCard();
     fetch(url, {
         method: 'POST',
         headers: {
@@ -201,20 +197,13 @@ function doConfirmAction() {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            closeConfirmCard();
             showToast('success', data.message);
             setTimeout(() => location.reload(), 1000);
         } else {
-            btn.disabled = false;
-            btn.innerHTML = origText;
             showToast('error', data.message || 'Error');
         }
     })
-    .catch(function() {
-        btn.disabled = false;
-        btn.innerHTML = origText;
-        showToast('error', pendingAction === 'approve' ? 'Error al aprobar' : 'Error al rechazar');
-    });
+    .catch(() => showToast('error', pendingAction === 'approve' ? 'Error al aprobar' : 'Error al rechazar'));
 }
 
 confirmModalOk.addEventListener('click', doConfirmAction);

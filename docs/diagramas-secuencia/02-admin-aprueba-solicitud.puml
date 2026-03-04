@@ -1,0 +1,43 @@
+@startuml secuencia_admin_aprueba_solicitud
+!theme plain
+title Diagrama de Secuencia: Admin aprueba solicitud de registro
+
+actor "Administrador" as Admin
+participant "Navegador" as Browser
+participant "AdminController" as AC
+participant "ConsumptionRequest" as CR
+participant "ConsumptionRequestItem" as Item
+participant "EmissionFactor" as EF
+participant "DailyConsumption" as DC
+
+Admin -> Browser : Clic "Aprobar" solicitud
+Browser -> AC : POST approveConsumptionRequest(id)
+activate AC
+
+AC -> AC : checkRol(admin)
+AC -> CR : findOrFail(id) with items.emissionFactor
+activate CR
+CR --> AC : requestModel
+deactivate CR
+
+alt status != pending
+  AC --> Browser : 400 Ya fue procesada
+else status == pending
+  loop Por cada item de la solicitud
+    AC -> Item : item (factor, quantity, nitrogen%)
+    AC -> EF : factor->factor
+    AC -> AC : co2 = quantity * factor [* % N si aplica]
+    AC -> DC : create(productive_unit_id, emission_factor_id,\nregistered_by, consumption_date, quantity,\nco2_generated, observations)
+    activate DC
+    DC --> AC : ok
+    deactivate DC
+  end
+  AC -> CR : update(status=approved, reviewed_by, reviewed_at)
+  activate CR
+  CR --> AC : ok
+  deactivate CR
+  AC --> Browser : 200 JSON (success, mensaje)
+end
+deactivate AC
+
+@enduml

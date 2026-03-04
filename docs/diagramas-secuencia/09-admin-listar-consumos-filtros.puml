@@ -1,0 +1,42 @@
+@startuml secuencia_admin_listar_consumos_filtros
+!theme plain
+title Diagrama de Secuencia: Admin lista consumos con filtros
+
+actor "Administrador" as Admin
+participant "Navegador" as Browser
+participant "AdminController" as AC
+participant "DailyConsumption" as DC
+participant "ProductiveUnit" as PU
+
+Admin -> Browser : Entra a Consumos (opcional: unit_id, start_date, end_date)
+Browser -> AC : GET allConsumptions(unit_id?, start_date?, end_date?)
+activate AC
+
+AC -> AC : checkRol(admin)
+AC -> DC : with(productiveUnit, emissionFactor, registeredBy)
+activate DC
+
+alt Filtro unit_id
+  AC -> DC : where(productive_unit_id = unit_id)
+end
+alt Filtro start_date
+  AC -> DC : where(consumption_date >= start_date)
+end
+alt Filtro end_date
+  AC -> DC : where(consumption_date <= end_date)
+end
+
+AC -> DC : orderBy(consumption_date desc, id desc)->paginate(50)
+DC --> AC : consumptions (paginado)
+deactivate DC
+
+AC -> PU : where(is_active, true)->get()
+activate PU
+PU --> AC : units
+deactivate PU
+
+AC --> Browser : View consumptions (consumptions, units)
+deactivate AC
+Browser --> Admin : Muestra tabla de consumos con filtros aplicados
+
+@enduml

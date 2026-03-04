@@ -1,0 +1,158 @@
+@startuml diagrama_clases_huella_carbono
+!theme plain
+title Diagrama de Clases\nSistema Web - Huella de Carbono\nMódulo HUELLACARBONO
+
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor #F5F5F5
+  BorderColor #37474F
+  ArrowColor #37474F
+}
+
+' ========== CLASE EXTERNA (App) ==========
+class User << (external) >> {
+  + id: bigint
+  + nickname: string
+  + email: string
+  __
+  (de la aplicación principal)
+}
+
+' ========== ENTIDADES DEL MÓDULO ==========
+
+class ProductiveUnit {
+  - table: hc_productive_units
+  __
+  + name: string
+  + code: string
+  + description: text
+  + productive_unit_id: bigint [FK SICA]
+  + leader_user_id: bigint [FK]
+  + is_active: boolean
+  __
+  + getConsumptionsByDateRange(start, end): Collection
+  + calculateCarbonFootprint(start, end): decimal
+}
+
+class EmissionFactor {
+  - table: hc_emission_factors
+  __
+  + name: string
+  + code: string
+  + unit: string
+  + factor: decimal
+  + description: text
+  + requires_percentage: boolean
+  + is_active: boolean
+  + order: int
+  __
+  + calculateCO2(quantity, nitrogenPercentage?): decimal
+  + scopeActive(): Query
+}
+
+class DailyConsumption {
+  - table: hc_daily_consumptions
+  __
+  + productive_unit_id: bigint [FK]
+  + emission_factor_id: bigint [FK]
+  + registered_by: bigint [FK]
+  + consumption_date: date
+  + quantity: decimal
+  + nitrogen_percentage: decimal
+  + co2_generated: decimal
+  + observations: text
+  __
+  + isDelayFromAdminApproval(): boolean
+}
+
+class ConsumptionRequest {
+  - table: hc_consumption_requests
+  __
+  + productive_unit_id: bigint [FK]
+  + requested_by: bigint [FK]
+  + consumption_date: date
+  + status: string
+  + reviewed_by: bigint [FK]
+  + reviewed_at: datetime
+  + observations: text
+  __
+  + isPending(): boolean
+}
+
+class ConsumptionRequestItem {
+  - table: hc_consumption_request_items
+  __
+  + consumption_request_id: bigint [FK]
+  + emission_factor_id: bigint [FK]
+  + quantity: decimal
+  + nitrogen_percentage: decimal
+}
+
+class PersonalCarbonCalculation {
+  - table: hc_personal_carbon_calculations
+  __
+  + name: string
+  + email: string
+  + water_consumption: decimal
+  + energy_consumption: decimal
+  + gasoline_consumption: decimal
+  + diesel_consumption: decimal
+  + waste_generation: decimal
+  + number_of_animals: int
+  + synthetic_fertilizers: decimal
+  + fertilizer_nitrogen_percentage: decimal
+  + insecticides: decimal
+  + fungicides: decimal
+  + herbicides: decimal
+  + total_co2: decimal
+  + period: string
+  __
+  + calculateTotalCO2(data): decimal
+}
+
+class Notification {
+  - table: hc_notifications
+  __
+  + user_id: bigint [FK]
+  + type: string
+  + title: string
+  + body: text
+  + data: array
+  + read_at: datetime
+  __
+  + isRead(): boolean
+  + markAsRead(): void
+  + types(): array
+}
+
+' ========== RELACIONES ==========
+
+' User (externo)
+User "1" -- "0..*" ProductiveUnit : leader >
+User "1" -- "0..*" DailyConsumption : registeredBy >
+User "1" -- "0..*" ConsumptionRequest : requestedBy >
+User "0..*" -- "0..*" ConsumptionRequest : reviewedBy >
+User "1" -- "0..*" Notification : user >
+
+' ProductiveUnit
+ProductiveUnit "1" -- "0..*" DailyConsumption : dailyConsumptions >
+ProductiveUnit "1" -- "0..*" ConsumptionRequest : consumptionRequests >
+
+' EmissionFactor
+EmissionFactor "1" -- "0..*" DailyConsumption : dailyConsumptions >
+EmissionFactor "1" -- "0..*" ConsumptionRequestItem : items >
+
+' ConsumptionRequest
+ConsumptionRequest "1" *-- "1..*" ConsumptionRequestItem : items >
+
+note top of User
+  Entidad de la aplicación principal (App\Models\User).
+  No pertenece al módulo HUELLACARBONO.
+end note
+
+note bottom of PersonalCarbonCalculation
+  Calculadora personal (pública).
+  No tiene FK a otras entidades del módulo.
+end note
+
+@enduml

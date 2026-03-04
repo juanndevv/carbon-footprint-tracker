@@ -131,7 +131,7 @@ function addVariableRow() {
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Cantidad <span class="text-slate-500">*</span></label>
-                    <input type="number" class="quantity-input w-full px-4 py-3 border border-gray-300 rounded-lg" step="0.001" min="0.001" required>
+                    <input type="number" class="quantity-input w-full px-4 py-3 border border-gray-300 rounded-lg" step="0.001" min="0" required>
                 </div>
             </div>
             <div class="nitrogen-container hidden mt-4">
@@ -193,8 +193,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 document.getElementById('requestForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    var btn = this.querySelector('button[type=submit]');
-    if (btn.disabled) return;
     const consumptionDate = document.getElementById('consumption_date').value;
     const observations = document.getElementById('observations').value;
     const variables = [];
@@ -214,9 +212,6 @@ document.getElementById('requestForm').addEventListener('submit', function(e) {
         showToast('error', 'Debes agregar al menos una variable');
         return;
     }
-    var origHtml = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Enviando...';
     fetch('{{ route("cefa.huellacarbono.leader.store_request") }}', {
         method: 'POST',
         headers: {
@@ -236,16 +231,10 @@ document.getElementById('requestForm').addEventListener('submit', function(e) {
             showToast('success', data.message);
             setTimeout(() => { window.location.href = '{{ route("cefa.huellacarbono.leader.dashboard") }}'; }, 1500);
         } else {
-            btn.disabled = false;
-            btn.innerHTML = origHtml;
             showToast('error', data.message || 'Error al enviar la solicitud');
         }
     })
-    .catch(function() {
-        btn.disabled = false;
-        btn.innerHTML = origHtml;
-        showToast('error', 'Error al enviar la solicitud');
-    });
+    .catch(() => showToast('error', 'Error al enviar la solicitud'));
 });
 </script>
 @endsection

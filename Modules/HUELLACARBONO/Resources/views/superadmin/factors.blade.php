@@ -174,26 +174,26 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Nombre (Variable) *</label>
-                    <input type="text" name="name" id="create_name" required class="no-numbers w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" placeholder="Ej: Consumo de agua" pattern="[^0-9]*" title="No se permiten números">
+                    <input type="text" name="name" id="create_name" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" placeholder="Ej: Consumo de agua">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Código *</label>
-                    <input type="text" name="code" id="create_code" required class="no-numbers w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" placeholder="Ej: WATER" pattern="[^0-9]*" title="No se permiten números">
+                    <input type="text" name="code" id="create_code" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" placeholder="Ej: WATER">
                 </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Unidad de Medida *</label>
-                    <input type="text" name="unit" id="create_unit" required class="no-numbers w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" placeholder="Ej: L, Kw/h, galón" pattern="[^0-9]*" title="No se permiten números">
+                    <input type="text" name="unit" id="create_unit" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" placeholder="Ej: L, Kw/h, galón">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Factor de Emisión *</label>
-                    <input type="number" name="factor" id="create_factor" step="0.0000001" min="0.0000001" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" placeholder="Ej: 0.0001427">
+                    <input type="number" name="factor" id="create_factor" step="0.0000001" min="0" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" placeholder="Ej: 0.0001427">
                 </div>
             </div>
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Descripción (opcional)</label>
-                <textarea name="description" id="create_description" rows="2" class="no-numbers w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" placeholder="Descripción del factor..." pattern="[^0-9]*" title="No se permiten números"></textarea>
+                <textarea name="description" id="create_description" rows="2" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" placeholder="Descripción del factor..."></textarea>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
@@ -231,14 +231,14 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Nombre (Variable)</label>
                     <input type="text" name="name" id="factor_name" required
-                           class="no-numbers w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
-                           placeholder="Ej: Consumo de agua" pattern="[^0-9]*" title="No se permiten números">
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                           placeholder="Ej: Consumo de agua">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Código</label>
                     <input type="text" name="code" id="factor_code" required
-                           class="no-numbers w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
-                           placeholder="Ej: WATER" pattern="[^0-9]*" title="No se permiten números">
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                           placeholder="Ej: WATER">
                 </div>
             </div>
             
@@ -246,12 +246,12 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Unidad de Medida</label>
                     <input type="text" name="unit" id="factor_unit" required
-                           class="no-numbers w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
-                           placeholder="Ej: L, Kw/h" pattern="[^0-9]*" title="No se permiten números">
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                           placeholder="Ej: L, Kw/h">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Factor de Emisión</label>
-                    <input type="number" name="factor" id="factor_value" step="0.0000001" min="0.0000001" required
+                    <input type="number" name="factor" id="factor_value" step="0.0000001" min="0" required
                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
                            placeholder="Ej: 0.0001427">
                 </div>
@@ -260,8 +260,8 @@
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Descripción (opcional)</label>
                 <textarea name="description" id="factor_description" rows="2"
-                          class="no-numbers w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
-                          placeholder="Descripción del factor..." pattern="[^0-9]*" title="No se permiten números"></textarea>
+                          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                          placeholder="Descripción del factor..."></textarea>
             </div>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -298,13 +298,6 @@
 var updateFactorUrl = "{{ route('cefa.huellacarbono.admin.factors.update', ['id' => '__ID__']) }}";
 var toggleFactorUrl = "{{ route('cefa.huellacarbono.admin.factors.toggle_status', ['id' => '__ID__']) }}";
 var storeFactorUrl = "{{ route('cefa.huellacarbono.admin.factors.store') }}";
-
-// Campos que solo permiten letras (sin números): nombre, código, unidad, descripción
-document.querySelectorAll('.no-numbers').forEach(function(el) {
-    function stripNumbers() { this.value = this.value.replace(/[0-9]/g, ''); }
-    el.addEventListener('input', stripNumbers);
-    el.addEventListener('paste', function() { setTimeout(function() { el.value = el.value.replace(/[0-9]/g, ''); }, 0); });
-});
 
 function openEditFactorModal(btn) {
     document.getElementById('factor_id').value = btn.getAttribute('data-factor-id');
@@ -357,9 +350,15 @@ document.addEventListener('click', function(e) {
         e.preventDefault();
         var factorId = toggleBtn.getAttribute('data-factor-id');
         var isActive = toggleBtn.getAttribute('data-factor-active') === '1';
-        showConfirm({
+        Swal.fire({
+            title: '¿Estás seguro?',
             text: isActive ? '¿Desactivar este factor?' : '¿Activar este factor?',
-            confirmText: 'Sí, cambiar'
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Sí, cambiar',
+            cancelButtonText: 'Cancelar'
         }).then(function(result) {
             if (result.isConfirmed) {
                 var url = toggleFactorUrl.replace('__ID__', factorId);
@@ -393,9 +392,6 @@ var createFactorFormEl = document.getElementById('createFactorForm');
 if (createFactorFormEl) {
 createFactorFormEl.addEventListener('submit', function(e) {
     e.preventDefault();
-    var btn = this.querySelector('button[type=submit]');
-    if (btn && btn.disabled) return;
-    if (btn) { btn.disabled = true; btn.dataset.origHtml = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Guardando...'; }
     var payload = {
         name: document.getElementById('create_name').value,
         code: document.getElementById('create_code').value,
@@ -421,14 +417,12 @@ createFactorFormEl.addEventListener('submit', function(e) {
                 closeModal('createFactorModal');
                 setTimeout(function() { location.reload(); }, 1000);
             } else {
-                if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.origHtml || ''; }
                 var msg = data.message || (data.errors ? (typeof data.errors === 'object' ? Object.values(data.errors).flat().join(' ') : data.errors) : 'Error al crear');
                 showToast('error', msg);
             }
         });
     })
     .catch(function(err) {
-        if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.origHtml || ''; }
         showToast('error', 'Error al crear el factor');
     });
 });
@@ -436,9 +430,6 @@ createFactorFormEl.addEventListener('submit', function(e) {
 
 document.getElementById('editFactorForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    var btn = this.querySelector('button[type=submit]');
-    if (btn && btn.disabled) return;
-    if (btn) { btn.disabled = true; btn.dataset.origHtml = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Guardando...'; }
     var factorId = document.getElementById('factor_id').value;
     var url = updateFactorUrl.replace('__ID__', factorId);
     var payload = {
@@ -466,13 +457,11 @@ document.getElementById('editFactorForm').addEventListener('submit', function(e)
                 closeModal('editFactorModal');
                 setTimeout(function() { location.reload(); }, 1000);
             } else {
-                if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.origHtml || ''; }
                 showToast('error', (data.message || data.errors) || 'Error al guardar');
             }
         });
     })
     .catch(function(err) {
-        if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.origHtml || ''; }
         showToast('error', 'Error al guardar cambios');
     });
 });

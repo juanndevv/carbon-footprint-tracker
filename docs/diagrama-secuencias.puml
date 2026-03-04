@@ -1,0 +1,380 @@
+' =====================================================================
+' DIAGRAMAS DE SECUENCIA - Sistema Web Huella de Carbono
+' Este archivo contiene 9 diagramas. Cada uno está también en archivo
+' separado en docs/diagramas-secuencia/:
+'   01-lider-registra-consumo.puml
+'   02-admin-aprueba-solicitud.puml
+'   03-lider-solicita-registro-fecha-pasada.puml
+'   04-visitante-calculadora-personal.puml
+'   05-admin-rechaza-solicitud.puml
+'   06-admin-exporta-reporte-pdf.puml
+'   07-admin-edita-consumo.puml
+'   08-admin-asignar-lider.puml
+'   09-admin-listar-consumos-filtros.puml
+' Para previsualizar uno: copia su bloque @startuml...@enduml o abre
+' el .puml correspondiente. CLI: java -jar plantuml.jar diagrama-secuencias.puml
+' =====================================================================
+
+@startuml secuencia_lider_registra_consumo
+!theme plain
+title Diagrama de Secuencia: Líder registra consumo diario
+
+actor "Líder" as Leader
+participant "Navegador" as Browser
+participant "LeaderController" as LC
+participant "ProductiveUnit" as PU
+participant "DailyConsumption" as DC
+participant "EmissionFactor" as EF
+
+Leader -> Browser : Envía formulario (fecha, factor, cantidad)
+Browser -> LC : POST storeConsumption(datos)
+activate LC
+
+LC -> LC : Validar request
+LC -> PU : where(leader_user_id = user.id)->first()
+activate PU
+PU --> LC : unit
+deactivate PU
+
+alt Sin unidad asignada
+  LC --> Browser : 403 Error
+else Unidad existe
+  LC -> DC : where(unit_id, factor_id, date)->first()
+  activate DC
+  DC --> LC : existing
+  deactivate DC
+
+  alt Ya existe registro (mismo factor + fecha)
+    LC --> Browser : 422 Ya existe registro
+  else No existe
+    LC -> DC : create(...)
+    activate DC
+    note right of DC : Event saving: calcula co2_generated\ncon EmissionFactor::calculateCO2
+    DC -> EF : factor, quantity, nitrogen%
+    activate EF
+    EF --> DC : co2
+    deactivate EF
+    DC --> LC : consumption
+    deactivate DC
+    LC --> Browser : 200 JSON (success, co2_generated)
+  end
+end
+deactivate LC
+
+@enduml
+
+
+@startuml secuencia_admin_aprueba_solicitud
+!theme plain
+title Diagrama de Secuencia: Admin aprueba solicitud de registro
+
+actor "Administrador" as Admin
+participant "Navegador" as Browser
+participant "AdminController" as AC
+participant "ConsumptionRequest" as CR
+participant "ConsumptionRequestItem" as Item
+participant "EmissionFactor" as EF
+participant "DailyConsumption" as DC
+
+Admin -> Browser : Clic "Aprobar" solicitud
+Browser -> AC : POST approveConsumptionRequest(id)
+activate AC
+
+AC -> AC : checkRol(admin)
+AC -> CR : findOrFail(id) with items.emissionFactor
+activate CR
+CR --> AC : requestModel
+deactivate CR
+
+alt status != pending
+  AC --> Browser : 400 Ya fue procesada
+else status == pending
+  loop Por cada item de la solicitud
+    AC -> Item : item (factor, quantity, nitrogen%)
+    AC -> EF : factor->factor
+    AC -> AC : co2 = quantity * factor [* % N si aplica]
+    AC -> DC : create(productive_unit_id, emission_factor_id,\nregistered_by, consumption_date, quantity,\nco2_generated, observations)
+    activate DC
+    DC --> AC : ok
+    deactivate DC
+  end
+  AC -> CR : update(status=approved, reviewed_by, reviewed_at)
+  activate CR
+  CR --> AC : ok
+  deactivate CR
+  AC --> Browser : 200 JSON (success, mensaje)
+end
+deactivate AC
+
+@enduml
+
+
+@startuml secuencia_lider_solicita_registro_fecha_pasada
+!theme plain
+title Diagrama de Secuencia: Líder solicita registro para fecha pasada
+
+actor "Líder" as Leader
+participant "Navegador" as Browser
+participant "LeaderController" as LC
+participant "ProductiveUnit" as PU
+participant "ConsumptionRequest" as CR
+participant "ConsumptionRequestItem" as CRI
+
+Leader -> Browser : Completa formulario (fecha pasada, ítems)
+Browser -> LC : POST storeConsumptionRequest(datos)
+activate LC
+
+LC -> LC : Validar (consumption_date before:today, variables[])
+LC -> PU : where(leader_user_id = user.id)->first()
+activate PU
+PU --> LC : unit
+deactivate PU
+
+alt Sin unidad
+  LC --> Browser : 403 No tienes unidad asignada
+else
+  LC -> CR : create(productive_unit_id, requested_by,\nconsumption_date, status=pending)
+  activate CR
+  CR --> LC : requestModel
+  deactivate CR
+
+  loop Por cada variable (factor, cantidad, % N)
+    LC -> CRI : create(consumption_request_id, emission_factor_id,\nquantity, nitrogen_percentage)
+    activate CRI
+    CRI --> LC : ok
+    deactivate CRI
+  end
+
+  LC --> Browser : 200 JSON (success, mensaje)
+end
+deactivate LC
+
+@enduml
+
+
+@startuml secuencia_visitante_calculadora_personal
+!theme plain
+title Diagrama de Secuencia: Visitante usa calculadora personal
+
+actor "Visitante" as Visitor
+participant "Navegador" as Browser
+participant "PublicController" as PC
+participant "PersonalCarbonCalculation" as PCC
+
+Visitor -> Browser : Ingresa datos (agua, energía, combustible, etc.)
+Browser -> PC : POST calculatePersonalFootprint(datos)
+activate PC
+
+PC -> PC : Validar (campos numéricos, period)
+PC -> PCC : calculateTotalCO2(validated)
+activate PCC
+PCC -> PCC : Aplicar factores por tipo de consumo\n(agua, energía, gasolina, fertilizantes, etc.)
+PCC --> PC : total_co2 (decimal)
+deactivate PCC
+
+PC -> PC : validated['total_co2'] = totalCO2
+PC -> PCC : create(validated)
+activate PCC
+PCC --> PC : calculation
+deactivate PCC
+
+PC --> Browser : 200 JSON (success, total_co2, calculation_id)
+deactivate PC
+Browser --> Visitor : Muestra resultado (kg CO₂)
+
+@enduml
+
+
+@startuml secuencia_admin_rechaza_solicitud
+!theme plain
+title Diagrama de Secuencia: Admin rechaza solicitud de registro
+
+actor "Administrador" as Admin
+participant "Navegador" as Browser
+participant "AdminController" as AC
+participant "ConsumptionRequest" as CR
+
+Admin -> Browser : Clic "Rechazar" + motivo (opcional)
+Browser -> AC : POST rejectConsumptionRequest(id, observations)
+activate AC
+
+AC -> AC : checkRol(admin)
+AC -> CR : findOrFail(id)
+activate CR
+CR --> AC : requestModel
+deactivate CR
+
+alt status != pending
+  AC --> Browser : 400 La solicitud ya fue procesada
+else status == pending
+  AC -> CR : update(status=rejected, reviewed_by,\nreviewed_at, observations)
+  activate CR
+  CR --> AC : ok
+  deactivate CR
+  AC --> Browser : 200 JSON (success, mensaje)
+end
+deactivate AC
+
+@enduml
+
+
+@startuml secuencia_admin_exporta_reporte_pdf
+!theme plain
+title Diagrama de Secuencia: Admin genera y exporta reporte PDF
+
+actor "Administrador" as Admin
+participant "Navegador" as Browser
+participant "AdminController" as AC
+participant "DailyConsumption" as DC
+participant "PDF" as PDF
+
+Admin -> Browser : Elige rango de fechas y "Exportar PDF"
+Browser -> AC : GET exportPDF(start_date, end_date, unit_id?)
+activate AC
+
+AC -> AC : checkRol(admin)
+AC -> DC : Query consumos (whereBetween dates, optional unit)
+activate DC
+DC --> AC : consumptions, byUnit, byFactor
+deactivate DC
+
+AC -> AC : Calcular totalCO2, agrupar por unidad/factor
+AC -> AC : loadView(reports.pdf, datos)
+AC -> PDF : loadView(...)->stream()
+activate PDF
+PDF --> AC : pdf stream
+deactivate PDF
+
+AC --> Browser : Response PDF (download)
+deactivate AC
+Browser --> Admin : Descarga archivo PDF
+
+@enduml
+
+
+@startuml secuencia_admin_edita_consumo
+!theme plain
+title Diagrama de Secuencia: Admin edita registro de consumo
+
+actor "Administrador" as Admin
+participant "Navegador" as Browser
+participant "AdminController" as AC
+participant "DailyConsumption" as DC
+participant "EmissionFactor" as EF
+
+Admin -> Browser : Edita cantidad, observaciones y guarda
+Browser -> AC : PUT editConsumption(id, quantity, nitrogen_percentage, observations)
+activate AC
+
+AC -> AC : checkRol(admin)
+AC -> DC : findOrFail(id)
+activate DC
+DC --> AC : consumption
+deactivate DC
+
+AC -> AC : Validar (quantity, nitrogen_percentage, observations)
+AC -> DC : update(validated)
+activate DC
+note right of DC : No se recalcula CO₂ en este flujo;\nse actualizan solo cantidad y observaciones
+DC --> AC : ok
+deactivate DC
+
+AC --> Browser : 200 JSON (success, consumption con emissionFactor)
+deactivate AC
+Browser --> Admin : Muestra mensaje y datos actualizados
+
+@enduml
+
+
+@startuml secuencia_admin_asignar_lider
+!theme plain
+title Diagrama de Secuencia: Admin asigna o cambia líder de unidad
+
+actor "Administrador" as Admin
+participant "Navegador" as Browser
+participant "AdminController" as AC
+participant "ProductiveUnit" as PU
+participant "User" as User
+participant "Role (SICA)" as Role
+
+Admin -> Browser : Selecciona usuario como líder (o "Sin líder")
+Browser -> AC : POST assignLeader(unit_id, leader_user_id?)
+activate AC
+
+AC -> AC : checkRol(admin)
+AC -> AC : Validar (leader_user_id nullable|exists:users,id)
+AC -> PU : findOrFail(unit_id)
+activate PU
+PU --> AC : unit
+deactivate PU
+
+AC -> PU : unit.leader_user_id = leader_user_id
+AC -> PU : save()
+activate PU
+PU --> AC : ok
+deactivate PU
+
+alt leader_user_id asignado
+  AC -> User : find(leader_user_id)
+  activate User
+  User --> AC : user
+  deactivate User
+  AC -> Role : where(slug = huellacarbono.leader)->first()
+  activate Role
+  Role --> AC : role
+  deactivate Role
+  AC -> User : roles()->syncWithoutDetaching([role.id])
+  activate User
+  User --> AC : ok
+  deactivate User
+end
+
+AC --> Browser : 200 JSON (success, mensaje)
+deactivate AC
+Browser --> Admin : Líder asignado correctamente
+
+@enduml
+
+
+@startuml secuencia_admin_listar_consumos_filtros
+!theme plain
+title Diagrama de Secuencia: Admin lista consumos con filtros
+
+actor "Administrador" as Admin
+participant "Navegador" as Browser
+participant "AdminController" as AC
+participant "DailyConsumption" as DC
+participant "ProductiveUnit" as PU
+
+Admin -> Browser : Entra a Consumos (opcional: unit_id, start_date, end_date)
+Browser -> AC : GET allConsumptions(unit_id?, start_date?, end_date?)
+activate AC
+
+AC -> AC : checkRol(admin)
+AC -> DC : with(productiveUnit, emissionFactor, registeredBy)
+activate DC
+
+alt Filtro unit_id
+  AC -> DC : where(productive_unit_id = unit_id)
+end
+alt Filtro start_date
+  AC -> DC : where(consumption_date >= start_date)
+end
+alt Filtro end_date
+  AC -> DC : where(consumption_date <= end_date)
+end
+
+AC -> DC : orderBy(consumption_date desc, id desc)->paginate(50)
+DC --> AC : consumptions (paginado)
+deactivate DC
+
+AC -> PU : where(is_active, true)->get()
+activate PU
+PU --> AC : units
+deactivate PU
+
+AC --> Browser : View consumptions (consumptions, units)
+deactivate AC
+Browser --> Admin : Muestra tabla de consumos con filtros aplicados
+
+@enduml

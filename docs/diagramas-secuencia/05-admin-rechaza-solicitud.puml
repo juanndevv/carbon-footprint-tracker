@@ -1,0 +1,31 @@
+@startuml secuencia_admin_rechaza_solicitud
+!theme plain
+title Diagrama de Secuencia: Admin rechaza solicitud de registro
+
+actor "Administrador" as Admin
+participant "Navegador" as Browser
+participant "AdminController" as AC
+participant "ConsumptionRequest" as CR
+
+Admin -> Browser : Clic "Rechazar" + motivo (opcional)
+Browser -> AC : POST rejectConsumptionRequest(id, observations)
+activate AC
+
+AC -> AC : checkRol(admin)
+AC -> CR : findOrFail(id)
+activate CR
+CR --> AC : requestModel
+deactivate CR
+
+alt status != pending
+  AC --> Browser : 400 La solicitud ya fue procesada
+else status == pending
+  AC -> CR : update(status=rejected, reviewed_by,\nreviewed_at, observations)
+  activate CR
+  CR --> AC : ok
+  deactivate CR
+  AC --> Browser : 200 JSON (success, mensaje)
+end
+deactivate AC
+
+@enduml

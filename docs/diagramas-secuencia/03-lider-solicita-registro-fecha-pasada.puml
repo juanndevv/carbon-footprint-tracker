@@ -1,0 +1,41 @@
+@startuml secuencia_lider_solicita_registro_fecha_pasada
+!theme plain
+title Diagrama de Secuencia: Líder solicita registro para fecha pasada
+
+actor "Líder" as Leader
+participant "Navegador" as Browser
+participant "LeaderController" as LC
+participant "ProductiveUnit" as PU
+participant "ConsumptionRequest" as CR
+participant "ConsumptionRequestItem" as CRI
+
+Leader -> Browser : Completa formulario (fecha pasada, ítems)
+Browser -> LC : POST storeConsumptionRequest(datos)
+activate LC
+
+LC -> LC : Validar (consumption_date before:today, variables[])
+LC -> PU : where(leader_user_id = user.id)->first()
+activate PU
+PU --> LC : unit
+deactivate PU
+
+alt Sin unidad
+  LC --> Browser : 403 No tienes unidad asignada
+else
+  LC -> CR : create(productive_unit_id, requested_by,\nconsumption_date, status=pending)
+  activate CR
+  CR --> LC : requestModel
+  deactivate CR
+
+  loop Por cada variable (factor, cantidad, % N)
+    LC -> CRI : create(consumption_request_id, emission_factor_id,\nquantity, nitrogen_percentage)
+    activate CRI
+    CRI --> LC : ok
+    deactivate CRI
+  end
+
+  LC --> Browser : 200 JSON (success, mensaje)
+end
+deactivate LC
+
+@enduml

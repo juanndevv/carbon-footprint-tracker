@@ -1,0 +1,94 @@
+@startuml diagrama_componentes_huella_carbono
+!theme plain
+title Diagrama de Componentes\nSistema Web - Huella de Carbono\nCentro de Formación La Angostura
+
+skinparam componentStyle rectangle
+skinparam defaultFontSize 11
+
+' ========== APLICACIÓN PRINCIPAL ==========
+package "Aplicación Laravel" as app {
+
+  ' ========== MÓDULO HUELLACARBONO ==========
+  package "Módulo HUELLACARBONO" as mod {
+
+    component "Rutas\n(web.php)" as rutas
+
+    package "Controladores" as ctrl {
+      component "AdminController\n(panel admin, unidades, factores,\nconsumos, reportes, solicitudes)" as admin
+      component "LeaderController\n(panel líder, registrar consumo,\nhistorial, alertas, solicitudes)" as leader
+      component "PublicController\n(inicio, información, calculadora,\nestadísticas públicas)" as public
+    }
+
+    package "Entidades" as ent {
+      component "ProductiveUnit\n(unidades productivas)" as pu
+      component "EmissionFactor\n(factores de emisión)" as ef
+      component "DailyConsumption\n(consumos diarios)" as dc
+      component "ConsumptionRequest\n(solicitudes de registro)" as cr
+      component "ConsumptionRequestItem\n(ítems de solicitud)" as cri
+      component "PersonalCarbonCalculation\n(calculadora personal)" as pcc
+      component "Notification\n(notificaciones)" as notif
+    }
+
+    package "Vistas (Blade)" as vistas {
+      component "Layouts\n(master, navbar, footer)" as layout
+      component "Vistas Admin\n(dashboard, unidades, factores,\nconsumos, reportes, gráficas)" as vadmin
+      component "Vistas Líder\n(dashboard, registrar, historial,\nalertas, estadísticas)" as vlider
+      component "Vistas Públicas\n(inicio, información, calculadora,\nestadísticas)" as vpub
+    }
+
+    package "Exportadores" as exp {
+      component "Exportación PDF\n(barryvdh/dompdf)" as pdf
+      component "Exportación Excel\n(Maatwebsite)" as excel
+    }
+
+    component "Configuración\n(config.php)" as config
+  }
+
+  ' ========== DEPENDENCIAS EXTERNAS AL MÓDULO ==========
+  component "User\n(App\\Models)" as user
+  component "SICA\n(roles, módulos)" as sica
+}
+
+' ========== RELACIONES DENTRO DEL MÓDULO ==========
+rutas --> admin : usa
+rutas --> leader : usa
+rutas --> public : usa
+
+admin --> pu : usa
+admin --> ef : usa
+admin --> dc : usa
+admin --> cr : usa
+admin --> vadmin : renderiza
+admin --> pdf : genera
+admin --> excel : genera
+admin --> user : usa
+admin --> sica : roles
+
+leader --> pu : usa
+leader --> dc : usa
+leader --> cr : usa
+leader --> vlider : renderiza
+leader --> user : usa
+
+public --> ef : usa
+public --> pcc : usa
+public --> vpub : renderiza
+
+dc --> pu : pertenece a
+dc --> ef : usa
+dc --> user : registrado por
+cr --> pu : pertenece a
+cr --> user : solicitante / revisor
+cri --> cr : pertenece a
+cri --> ef : usa
+notif --> user : destinatario
+
+layout --> vadmin : incluye
+layout --> vlider : incluye
+layout --> vpub : incluye
+
+config ..> admin : configuración
+config ..> leader : configuración
+config ..> public : configuración
+
+@enduml

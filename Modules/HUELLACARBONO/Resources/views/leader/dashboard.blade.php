@@ -3,16 +3,6 @@
 @section('content')
 <div class="min-h-screen bg-gray-50 py-8">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        @if(!$unit->is_active)
-        <div class="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center">
-            <i class="fas fa-exclamation-triangle text-2xl text-amber-600 mr-4"></i>
-            <div>
-                <p class="font-semibold text-amber-900">Unidad desactivada</p>
-                <p class="text-sm text-amber-800">Tu unidad productiva está desactivada. No puedes registrar nuevos consumos. Puedes consultar historial y estadísticas.</p>
-            </div>
-        </div>
-        @endif
-
         <!-- Header -->
         <div class="mb-8">
             <div class="flex items-center justify-between">
@@ -22,16 +12,10 @@
                     </h1>
                     <p class="text-gray-600">{{ $unit->name }}</p>
                 </div>
-                @if($unit->is_active)
                 <a href="{{ route('cefa.huellacarbono.leader.register') }}" 
                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold transition shadow-lg flex items-center">
                     <i class="fas fa-plus mr-2"></i> Registrar Consumo
                 </a>
-                @else
-                <span class="bg-gray-300 text-gray-500 cursor-not-allowed px-6 py-3 rounded-xl font-semibold flex items-center">
-                    <i class="fas fa-ban mr-2"></i> Registro no disponible
-                </span>
-                @endif
             </div>
         </div>
 
@@ -72,20 +56,12 @@
 
         <!-- Accesos Rápidos -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            @if($unit->is_active)
             <a href="{{ route('cefa.huellacarbono.leader.register') }}" 
                class="bg-gradient-to-br from-teal-500 to-cyan-600 rounded-2xl shadow-lg p-8 text-white hover:shadow-xl transition transform hover:-translate-y-1">
                 <i class="fas fa-plus-circle text-5xl mb-4"></i>
                 <h3 class="text-2xl font-bold mb-2">Registrar Consumo Diario</h3>
                 <p class="opacity-90">Ingresa los datos de consumo de hoy</p>
             </a>
-            @else
-            <div class="bg-gray-100 rounded-2xl shadow p-8 text-gray-500 border border-gray-200">
-                <i class="fas fa-ban text-5xl mb-4"></i>
-                <h3 class="text-2xl font-bold mb-2">Registrar Consumo Diario</h3>
-                <p>No disponible: unidad desactivada</p>
-            </div>
-            @endif
 
             <a href="{{ route('cefa.huellacarbono.leader.history') }}" 
                class="bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl shadow-lg p-8 text-white hover:shadow-xl transition transform hover:-translate-y-1">

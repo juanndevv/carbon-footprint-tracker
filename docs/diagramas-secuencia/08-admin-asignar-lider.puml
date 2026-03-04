@@ -1,0 +1,48 @@
+@startuml secuencia_admin_asignar_lider
+!theme plain
+title Diagrama de Secuencia: Admin asigna o cambia líder de unidad
+
+actor "Administrador" as Admin
+participant "Navegador" as Browser
+participant "AdminController" as AC
+participant "ProductiveUnit" as PU
+participant "User" as User
+participant "Role (SICA)" as Role
+
+Admin -> Browser : Selecciona usuario como líder (o "Sin líder")
+Browser -> AC : POST assignLeader(unit_id, leader_user_id?)
+activate AC
+
+AC -> AC : checkRol(admin)
+AC -> AC : Validar (leader_user_id nullable|exists:users,id)
+AC -> PU : findOrFail(unit_id)
+activate PU
+PU --> AC : unit
+deactivate PU
+
+AC -> PU : unit.leader_user_id = leader_user_id
+AC -> PU : save()
+activate PU
+PU --> AC : ok
+deactivate PU
+
+alt leader_user_id asignado
+  AC -> User : find(leader_user_id)
+  activate User
+  User --> AC : user
+  deactivate User
+  AC -> Role : where(slug = huellacarbono.leader)->first()
+  activate Role
+  Role --> AC : role
+  deactivate Role
+  AC -> User : roles()->syncWithoutDetaching([role.id])
+  activate User
+  User --> AC : ok
+  deactivate User
+end
+
+AC --> Browser : 200 JSON (success, mensaje)
+deactivate AC
+Browser --> Admin : Líder asignado correctamente
+
+@enduml

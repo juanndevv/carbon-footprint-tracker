@@ -1,0 +1,32 @@
+@startuml secuencia_admin_exporta_reporte_pdf
+!theme plain
+title Diagrama de Secuencia: Admin genera y exporta reporte PDF
+
+actor "Administrador" as Admin
+participant "Navegador" as Browser
+participant "AdminController" as AC
+participant "DailyConsumption" as DC
+participant "PDF" as PDF
+
+Admin -> Browser : Elige rango de fechas y "Exportar PDF"
+Browser -> AC : GET exportPDF(start_date, end_date, unit_id?)
+activate AC
+
+AC -> AC : checkRol(admin)
+AC -> DC : Query consumos (whereBetween dates, optional unit)
+activate DC
+DC --> AC : consumptions, byUnit, byFactor
+deactivate DC
+
+AC -> AC : Calcular totalCO2, agrupar por unidad/factor
+AC -> AC : loadView(reports.pdf, datos)
+AC -> PDF : loadView(...)->stream()
+activate PDF
+PDF --> AC : pdf stream
+deactivate PDF
+
+AC --> Browser : Response PDF (download)
+deactivate AC
+Browser --> Admin : Descarga archivo PDF
+
+@enduml

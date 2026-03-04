@@ -1,0 +1,43 @@
+@startuml diagrama_despliegue_huella_carbono
+!theme plain
+title Diagrama de Despliegue\nSistema Web - Huella de Carbono\nCentro de Formación La Angostura
+
+skinparam componentStyle rectangle
+skinparam nodeStyle rectangle
+skinparam defaultFontSize 11
+
+' ========== CLIENTE ==========
+node "Cliente" as client {
+  component "Navegador Web\n(HTTP/HTTPS, sesión)" as browser
+}
+
+' ========== SERVIDOR WEB / APLICACIÓN ==========
+node "Servidor de Aplicaciones\n(Laragon / Apache o Nginx)" as server {
+  component "PHP\n(motor de ejecución)" as php
+  component "Laravel\n(marco de trabajo, módulos)" as laravel
+  component "Módulo HUELLACARBONO\n(rutas, controladores, vistas, entidades)" as hc
+  php --> laravel
+  laravel --> hc
+}
+
+' ========== BASE DE DATOS ==========
+database "MySQL\n(base de datos)" as db
+
+' ========== CONEXIONES ==========
+client -down-> server : HTTP/HTTPS\n(puerto 80/443)
+server -down-> db : PDO / MySQL\n(conexión)
+
+note right of server
+  Entorno típico: Laragon
+  (Apache + PHP + MySQL)
+  o Nginx + PHP-FPM + MySQL
+end note
+
+note bottom of db
+  Tablas: hc_productive_units,
+  hc_emission_factors, hc_daily_consumptions,
+  hc_consumption_requests, hc_notifications,
+  users, roles (SICA/App)
+end note
+
+@enduml

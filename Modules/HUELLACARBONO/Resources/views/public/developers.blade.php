@@ -29,8 +29,8 @@
                 <p class="mt-3 text-base font-medium text-green-700">Tgo. Análisis y desarrollo de software</p>
                 <div class="mt-6 flex justify-center gap-5">
                     <a href="#" class="text-gray-400 hover:text-green-600 transition" title="LinkedIn"><i class="fab fa-linkedin text-3xl"></i></a>
-                    <a href="https://github.com/juanndevv" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-gray-800 transition" title="GitHub"><i class="fab fa-github text-3xl"></i></a>
-                    <a href="https://wa.me/573212115067" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-green-500 transition" title="WhatsApp: +57 3212115067"><i class="fab fa-whatsapp text-3xl"></i></a>
+                    <a href="#" class="text-gray-400 hover:text-gray-800 transition" title="GitHub"><i class="fab fa-github text-3xl"></i></a>
+                    <a href="#" class="text-gray-400 hover:text-green-500 transition" title="WhatsApp"><i class="fab fa-whatsapp text-3xl"></i></a>
                 </div>
             </div>
         </div>
@@ -44,8 +44,8 @@
                 <p class="mt-3 text-base font-medium text-green-700">Tgo. Análisis y desarrollo de software</p>
                 <div class="mt-6 flex justify-center gap-5">
                     <a href="#" class="text-gray-400 hover:text-green-600 transition" title="LinkedIn"><i class="fab fa-linkedin text-3xl"></i></a>
-                    <a href="https://github.com/eveline666" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-gray-800 transition" title="GitHub"><i class="fab fa-github text-3xl"></i></a>
-                    <a href="https://wa.me/573185330431" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-green-500 transition" title="WhatsApp: +57 3185330431"><i class="fab fa-whatsapp text-3xl"></i></a>
+                    <a href="#" class="text-gray-400 hover:text-gray-800 transition" title="GitHub"><i class="fab fa-github text-3xl"></i></a>
+                    <a href="#" class="text-gray-400 hover:text-green-500 transition" title="WhatsApp"><i class="fab fa-whatsapp text-3xl"></i></a>
                 </div>
             </div>
         </div>

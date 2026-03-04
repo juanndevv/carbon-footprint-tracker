@@ -63,7 +63,6 @@ Route::middleware(['lang'])->group(function () {
 
             // Visualización y Edición de Datos
             Route::get('/consumos', 'allConsumptions')->name('cefa.huellacarbono.admin.consumptions.index');
-            Route::get('/consumos/{id}', 'getConsumption')->name('cefa.huellacarbono.admin.consumptions.show');
             Route::put('/consumos/{id}/editar', 'editConsumption')->name('cefa.huellacarbono.admin.consumptions.edit');
             Route::delete('/consumos/{id}/eliminar', 'deleteConsumption')->name('cefa.huellacarbono.admin.consumptions.delete');
 

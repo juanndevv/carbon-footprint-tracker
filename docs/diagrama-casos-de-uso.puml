@@ -1,0 +1,90 @@
+@startuml diagrama_casos_uso_huella_carbono
+!theme plain
+title Diagrama de Casos de Uso\nSistema Web - Huella de Carbono\nCentro de Formación La Angostura
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam usecase {
+  BackgroundColor<<admin>> #E8F5E9
+  BackgroundColor<<lider>> #E3F2FD
+  BackgroundColor<<publico>> #FFF8E1
+}
+
+actor "Administrador" as Admin
+actor "Líder de\nunidad" as Leader
+actor "Visitante" as Visitor
+
+rectangle "Sistema Web - Huella de Carbono" {
+
+  ' ========== CASOS DE USO ADMIN ==========
+  usecase "Ver dashboard" as UC_ADM_DASH <<admin>>
+  usecase "Gestionar unidades\nproductivas" as UC_ADM_UNIT <<admin>>
+  usecase "Gestionar factores\nde emisión" as UC_ADM_FACT <<admin>>
+  usecase "Gestionar usuarios\ny roles" as UC_ADM_USER <<admin>>
+  usecase "Ver y filtrar\nconsumos" as UC_ADM_CONS <<admin>>
+  usecase "Editar consumo" as UC_ADM_EDIT <<admin>>
+  usecase "Eliminar consumo" as UC_ADM_DEL <<admin>>
+  usecase "Generar reportes" as UC_ADM_REP <<admin>>
+  usecase "Exportar reporte\n(PDF / Excel)" as UC_ADM_EXP <<admin>>
+  usecase "Ver gráficas\ny análisis" as UC_ADM_CHART <<admin>>
+  usecase "Gestionar solicitudes\nde registro" as UC_ADM_REQ <<admin>>
+
+  ' ========== CASOS DE USO LÍDER ==========
+  usecase "Ver dashboard\nde unidad" as UC_LEAD_DASH <<lider>>
+  usecase "Registrar consumo\ndiario" as UC_LEAD_REG <<lider>>
+  usecase "Ver historial\nde consumos" as UC_LEAD_HIST <<lider>>
+  usecase "Editar consumo\npropio" as UC_LEAD_EDIT <<lider>>
+  usecase "Ver alertas\n(días sin reporte)" as UC_LEAD_ALERT <<lider>>
+  usecase "Solicitar registro\n(fecha pasada)" as UC_LEAD_SOL <<lider>>
+  usecase "Ver estadísticas\nde mi unidad" as UC_LEAD_STAT <<lider>>
+  usecase "Ver gráficas\nde mi unidad" as UC_LEAD_CHART <<lider>>
+
+  ' ========== CASOS DE USO PÚBLICOS (Visitante) ==========
+  usecase "Ver página\nde inicio" as UC_PUB_INDEX <<publico>>
+  usecase "Ver información\ndel proyecto" as UC_PUB_INFO <<publico>>
+  usecase "Usar calculadora\npersonal" as UC_PUB_CALC <<publico>>
+  usecase "Ver estadísticas\npúblicas" as UC_PUB_STAT <<publico>>
+  usecase "Ver sección\ndesarrolladores" as UC_PUB_DEV <<publico>>
+
+  ' Relaciones include (opcional)
+  UC_ADM_REP ..> UC_ADM_EXP : <<include>>
+}
+
+' ========== ASOCIACIONES ADMIN ==========
+Admin --> UC_ADM_DASH
+Admin --> UC_ADM_UNIT
+Admin --> UC_ADM_FACT
+Admin --> UC_ADM_USER
+Admin --> UC_ADM_CONS
+Admin --> UC_ADM_EDIT
+Admin --> UC_ADM_DEL
+Admin --> UC_ADM_REP
+Admin --> UC_ADM_CHART
+Admin --> UC_ADM_REQ
+
+' ========== ASOCIACIONES LÍDER ==========
+Leader --> UC_LEAD_DASH
+Leader --> UC_LEAD_REG
+Leader --> UC_LEAD_HIST
+Leader --> UC_LEAD_EDIT
+Leader --> UC_LEAD_ALERT
+Leader --> UC_LEAD_SOL
+Leader --> UC_LEAD_STAT
+Leader --> UC_LEAD_CHART
+
+' ========== ASOCIACIONES VISITANTE ==========
+Visitor --> UC_PUB_INDEX
+Visitor --> UC_PUB_INFO
+Visitor --> UC_PUB_CALC
+Visitor --> UC_PUB_STAT
+Visitor --> UC_PUB_DEV
+
+' El Líder envía solicitudes; el Admin las aprueba o rechaza (ver nota)
+Leader --> UC_LEAD_SOL
+
+note right of UC_ADM_REQ
+  El Administrador aprueba o rechaza
+  las solicitudes enviadas por los Líderes
+end note
+
+@enduml

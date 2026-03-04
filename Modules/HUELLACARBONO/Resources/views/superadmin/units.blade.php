@@ -50,25 +50,6 @@
             </div>
         </div>
 
-        <!-- Filtro de búsqueda -->
-        <div class="bg-white rounded-2xl shadow-lg p-4 mb-6">
-            <form action="{{ route('cefa.huellacarbono.admin.units.index') }}" method="GET" class="flex flex-wrap items-center gap-3">
-                <label for="search-units" class="sr-only">Buscar unidades</label>
-                <input type="text" 
-                       id="search-units" 
-                       name="search" 
-                       value="{{ request('search') }}" 
-                       placeholder="Buscar por nombre, código o descripción..." 
-                       class="flex-1 min-w-[200px] px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent">
-                <button type="submit" class="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg transition">
-                    <i class="fas fa-search mr-2"></i> Buscar
-                </button>
-                @if(request('search'))
-                    <a href="{{ route('cefa.huellacarbono.admin.units.index') }}" class="px-4 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition">Limpiar</a>
-                @endif
-            </form>
-        </div>
-
         <!-- Tabla de Unidades -->
         <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
             <div class="bg-gradient-to-r from-teal-600 to-emerald-700 px-6 py-4">
@@ -354,27 +335,13 @@
     }
 @endphp
 var leaderUsersList = @json($leaderListForJs);
-var assignedLeaderUserIds = @json($assignedLeaderUserIds ?? []);
-var currentAssignLeaderId = null; // al abrir modal "Asignar líder" se setea al líder actual de esa unidad
 
 function showLeaderList(inputId, listId) {
     var input = document.getElementById(inputId);
     var listEl = document.getElementById(listId);
     var search = input.value.trim().toLowerCase();
     var filtered = leaderUsersList.filter(function(item) {
-        if (search && item.search.indexOf(search) === -1) return false;
-        // En "Asignar líder": mostrar Sin líder, usuarios sin unidad asignada, o el líder actual de esta unidad
-        if (listId === 'assign_leader_list') {
-            if (item.value === '') return true;
-            if (item.value === (currentAssignLeaderId || '')) return true;
-            return assignedLeaderUserIds.indexOf(item.value) === -1;
-        }
-        // En "Crear unidad": solo usuarios sin unidad asignada (o Sin líder)
-        if (listId === 'create_unit_leader_list') {
-            if (item.value === '') return true;
-            return assignedLeaderUserIds.indexOf(item.value) === -1;
-        }
-        return true;
+        return !search || item.search.indexOf(search) !== -1;
     });
     listEl.innerHTML = filtered.map(function(item) {
         return '<div class="px-4 py-2.5 cursor-pointer hover:bg-green-50 border-b border-gray-100 last:border-0 text-gray-800" data-value="' + item.value + '" data-display="' + item.display.replace(/"/g, '&quot;') + '">' + item.display.replace(/</g, '&lt;') + '</div>';
@@ -417,7 +384,6 @@ function clearAssignLeader() {
 }
 
 function openAssignLeaderModal(unitId, unitName, currentLeaderId, currentLeaderName) {
-    currentAssignLeaderId = (currentLeaderId != null && currentLeaderId !== '') ? String(currentLeaderId) : null;
     document.getElementById('unit_id').value = unitId;
     document.getElementById('unitNameText').textContent = 'Unidad: ' + unitName;
     
@@ -460,9 +426,15 @@ function toggleStatus(unitId, newStatus) {
     // Convertir a booleano
     const willBeActive = newStatus == 1 || newStatus === true || newStatus === 'true';
     
-    showConfirm({
+    Swal.fire({
+        title: '¿Estás seguro?',
         text: willBeActive ? '¿Activar esta unidad?' : '¿Desactivar esta unidad?',
-        confirmText: 'Sí, cambiar'
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sí, cambiar',
+        cancelButtonText: 'Cancelar'
     }).then((result) => {
         if (result.isConfirmed) {
             fetch(`/huellacarbono/admin/unidades/${unitId}/toggle-status`, {
@@ -501,9 +473,8 @@ function toggleStatus(unitId, newStatus) {
 // Formulario de crear unidad
 document.getElementById('createUnitForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    var btn = this.querySelector('button[type=submit]');
-    if (btn && btn.disabled) return;
-    if (btn) { btn.disabled = true; btn.dataset.origHtml = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Guardando...'; }
+    
+    // Convertir a JSON
     const data = {
         name: document.getElementById('create_unit_name').value,
         code: document.getElementById('create_unit_code').value,
@@ -512,6 +483,7 @@ document.getElementById('createUnitForm').addEventListener('submit', function(e)
         longitude: document.getElementById('create_unit_longitude').value || null,
         leader_user_id: document.getElementById('create_unit_leader').value || null
     };
+    
     fetch('/huellacarbono/admin/unidades/store', {
         method: 'POST',
         headers: {
@@ -534,12 +506,10 @@ document.getElementById('createUnitForm').addEventListener('submit', function(e)
             showToast('success', 'Unidad creada exitosamente');
             setTimeout(() => location.reload(), 1000);
         } else {
-            if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.origHtml || ''; }
             showToast('error', data.message || 'Error al crear la unidad');
         }
     })
     .catch(error => {
-        if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.origHtml || ''; }
         console.error('Error:', error);
         showToast('error', 'Error al crear la unidad: ' + error.message);
     });
@@ -548,11 +518,9 @@ document.getElementById('createUnitForm').addEventListener('submit', function(e)
 // Formulario de asignar líder
 document.getElementById('assignLeaderForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    var btn = this.querySelector('button[type=submit]');
-    if (btn && btn.disabled) return;
-    if (btn) { btn.disabled = true; btn.dataset.origHtml = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Guardando...'; }
     const unitId = document.getElementById('unit_id').value;
     const formData = new FormData(this);
+    
     fetch(`/huellacarbono/admin/unidades/${unitId}/asignar-lider`, {
         method: 'POST',
         headers: {
@@ -567,12 +535,10 @@ document.getElementById('assignLeaderForm').addEventListener('submit', function(
             showToast('success', 'Líder asignado exitosamente');
             setTimeout(() => location.reload(), 1000);
         } else {
-            if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.origHtml || ''; }
             showToast('error', data.message || 'Error al asignar líder');
         }
     })
     .catch(error => {
-        if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.origHtml || ''; }
         console.error('Error:', error);
         showToast('error', 'Error al asignar líder');
     });
@@ -581,10 +547,9 @@ document.getElementById('assignLeaderForm').addEventListener('submit', function(
 // Formulario de editar unidad
 document.getElementById('editUnitForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    var btn = this.querySelector('button[type=submit]');
-    if (btn && btn.disabled) return;
-    if (btn) { btn.disabled = true; btn.dataset.origHtml = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Guardando...'; }
     const unitId = document.getElementById('edit_unit_id').value;
+    
+    // Convertir a JSON en lugar de FormData
     const data = {
         name: document.getElementById('edit_unit_name').value,
         code: document.getElementById('edit_unit_code').value,
@@ -592,6 +557,7 @@ document.getElementById('editUnitForm').addEventListener('submit', function(e) {
         latitude: document.getElementById('edit_unit_latitude').value || null,
         longitude: document.getElementById('edit_unit_longitude').value || null
     };
+    
     fetch(`/huellacarbono/admin/unidades/${unitId}/update`, {
         method: 'PUT',
         headers: {
@@ -612,12 +578,10 @@ document.getElementById('editUnitForm').addEventListener('submit', function(e) {
             showToast('success', 'Unidad actualizada exitosamente');
             setTimeout(() => location.reload(), 1000);
         } else {
-            if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.origHtml || ''; }
             showToast('error', data.message || 'Error al actualizar la unidad');
         }
     })
     .catch(error => {
-        if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.origHtml || ''; }
         console.error('Error:', error);
         showToast('error', 'Error al actualizar la unidad: ' + error.message);
     });

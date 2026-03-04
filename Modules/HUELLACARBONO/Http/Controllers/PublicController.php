@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Auth;
 use Modules\HUELLACARBONO\Entities\PersonalCarbonCalculation;
 use Modules\HUELLACARBONO\Entities\EmissionFactor;
 use Modules\HUELLACARBONO\Entities\DailyConsumption;
-use Modules\HUELLACARBONO\Entities\ProductiveUnit;
 use Carbon\Carbon;
 
 class PublicController extends Controller
@@ -22,66 +21,38 @@ class PublicController extends Controller
         // Si el usuario está autenticado, redirigir según su rol (Líder tiene prioridad: no ver Admin)
         if (Auth::check()) {
             if (checkRol('huellacarbono.leader')) {
-                // Solo redirigir al dashboard si tiene una unidad asignada (evita bucle cuando se quitó rol y se volvió a asignar sin reasignar en Unidades)
-                $leaderUnit = ProductiveUnit::where('leader_user_id', Auth::id())->first();
-                if ($leaderUnit) {
-                    return redirect()->route('cefa.huellacarbono.leader.dashboard');
-                }
-                session()->flash('message', 'Tienes rol de líder pero no tienes una unidad productiva asignada. Un administrador debe asignarte como líder en la sección Unidades.');
-                session()->flash('icon', 'error');
+                return redirect()->route('cefa.huellacarbono.leader.dashboard');
             }
             if (checkRol('huellacarbono.admin')) {
                 return redirect()->route('cefa.huellacarbono.admin.dashboard');
             }
         }
         
-        // Mapa de calor: todas las unidades activas. Si tienen lat/lng se usan; si no, posición por defecto (las de antes).
+        // Centro: Centro de Formación Agroindustrial La Angostura, Campo Alegre, Campoalegre, Huila
         $centerLat = (float) env('MAPBOX_CENTER_LAT', 2.612606);
         $centerLng = (float) env('MAPBOX_CENTER_LNG', -75.361439);
-        $defaultPositions = [
-            ['lat' => $centerLat, 'lng' => $centerLng],
-            ['lat' => $centerLat - 0.0004, 'lng' => $centerLng - 0.0005],
-            ['lat' => $centerLat + 0.0002, 'lng' => $centerLng - 0.0003],
-            ['lat' => $centerLat - 0.0003, 'lng' => $centerLng + 0.0004],
-            ['lat' => $centerLat - 0.0005, 'lng' => $centerLng + 0.0002],
-            ['lat' => $centerLat - 0.0006, 'lng' => $centerLng - 0.0002],
-            ['lat' => $centerLat + 0.0003, 'lng' => $centerLng + 0.0003],
-            ['lat' => $centerLat + 0.0005, 'lng' => $centerLng + 0.0005],
-            ['lat' => $centerLat + 0.0006, 'lng' => $centerLng + 0.0006],
-            ['lat' => $centerLat + 0.0004, 'lng' => $centerLng + 0.0007],
-            ['lat' => $centerLat + 0.0001, 'lng' => $centerLng - 0.0004],
-            ['lat' => $centerLat - 0.0001, 'lng' => $centerLng - 0.0001],
-            ['lat' => $centerLat - 0.0002, 'lng' => $centerLng],
-            ['lat' => $centerLat - 0.0007, 'lng' => $centerLng - 0.0004],
-            ['lat' => $centerLat - 0.0004, 'lng' => $centerLng - 0.0006],
-            ['lat' => $centerLat - 0.0006, 'lng' => $centerLng + 0.0001],
-            ['lat' => $centerLat + 0.0002, 'lng' => $centerLng - 0.0005],
-            ['lat' => $centerLat - 0.0002, 'lng' => $centerLng + 0.00035],
-            ['lat' => $centerLat + 0.00055, 'lng' => $centerLng + 0.0004],
-            ['lat' => $centerLat + 0.00005, 'lng' => $centerLng + 0.0001],
+        $heatmapZones = [
+            ['name' => 'Complejo Agroindustrial', 'lat' => $centerLat, 'lng' => $centerLng, 'co2' => 420],
+            ['name' => 'PTAR', 'lat' => $centerLat - 0.0004, 'lng' => $centerLng - 0.0005, 'co2' => 380],
+            ['name' => 'PTAP', 'lat' => $centerLat + 0.0002, 'lng' => $centerLng - 0.0003, 'co2' => 180],
+            ['name' => 'Ganadería', 'lat' => $centerLat - 0.0003, 'lng' => $centerLng + 0.0004, 'co2' => 350],
+            ['name' => 'Corral', 'lat' => $centerLat - 0.0005, 'lng' => $centerLng + 0.0002, 'co2' => 320],
+            ['name' => 'Invernadero', 'lat' => $centerLat - 0.0006, 'lng' => $centerLng - 0.0002, 'co2' => 220],
+            ['name' => 'Vivero', 'lat' => $centerLat + 0.0003, 'lng' => $centerLng + 0.0003, 'co2' => 90],
+            ['name' => 'Agroquímicos', 'lat' => $centerLat + 0.0005, 'lng' => $centerLng + 0.0005, 'co2' => 280],
+            ['name' => 'Cítricos', 'lat' => $centerLat + 0.0006, 'lng' => $centerLng + 0.0006, 'co2' => 70],
+            ['name' => 'Unidad Piscícola', 'lat' => $centerLat + 0.0004, 'lng' => $centerLng + 0.0007, 'co2' => 95],
+            ['name' => 'Biblioteca', 'lat' => $centerLat + 0.0001, 'lng' => $centerLng - 0.0004, 'co2' => 60],
+            ['name' => 'Restaurante', 'lat' => $centerLat - 0.0001, 'lng' => $centerLng - 0.0001, 'co2' => 190],
+            ['name' => 'Gimnasio', 'lat' => $centerLat - 0.0002, 'lng' => $centerLng, 'co2' => 85],
+            ['name' => 'Tecnoparque', 'lat' => $centerLat - 0.0007, 'lng' => $centerLng - 0.0004, 'co2' => 150],
+            ['name' => 'Lago / Casa de Lago', 'lat' => $centerLat - 0.0004, 'lng' => $centerLng - 0.0006, 'co2' => 45],
+            ['name' => 'Centro de Acopio Residuos', 'lat' => $centerLat - 0.0006, 'lng' => $centerLng + 0.0001, 'co2' => 110],
+            ['name' => 'Subestación', 'lat' => $centerLat + 0.0002, 'lng' => $centerLng - 0.0005, 'co2' => 260],
+            ['name' => 'Lab. Ciencias Básicas', 'lat' => $centerLat - 0.0002, 'lng' => $centerLng + 0.00035, 'co2' => 120],
+            ['name' => 'Centro de Convivencia', 'lat' => $centerLat + 0.00055, 'lng' => $centerLng + 0.0004, 'co2' => 75],
+            ['name' => 'Administrativos Casona', 'lat' => $centerLat + 0.00005, 'lng' => $centerLng + 0.0001, 'co2' => 140],
         ];
-
-        $units = ProductiveUnit::where('is_active', true)->orderBy('name')->get();
-        $startOfMonth = Carbon::now()->startOfMonth();
-        $endOfMonth = Carbon::now()->endOfMonth();
-        $heatmapZones = [];
-        $forceDefaultForNames = ['cárnica', 'carnica', 'sen']; // Unidad Cárnica y Unidad SEN en la misma zona que las demás
-        foreach ($units as $index => $unit) {
-            $co2 = (float) DailyConsumption::where('productive_unit_id', $unit->id)
-                ->whereBetween('consumption_date', [$startOfMonth, $endOfMonth])
-                ->sum('co2_generated');
-            $pos = $defaultPositions[$index % count($defaultPositions)];
-            $nameLower = mb_strtolower($unit->name);
-            $useDefault = ($unit->latitude === null && $unit->longitude === null)
-                || collect($forceDefaultForNames)->contains(fn ($term) => str_contains($nameLower, $term));
-            $heatmapZones[] = [
-                'name' => $unit->name,
-                'lat'  => $useDefault ? $pos['lat'] : (float) $unit->latitude,
-                'lng'  => $useDefault ? $pos['lng'] : (float) $unit->longitude,
-                'co2'  => round($co2, 2),
-            ];
-        }
-
         $mapboxToken = config('services.mapbox.token', env('MAPBOX_TOKEN'));
 
         return view('huellacarbono::public.index', compact('heatmapZones', 'mapboxToken'));
@@ -114,87 +85,33 @@ class PublicController extends Controller
     }
 
     /**
-     * Calcular huella de carbono personal usando los factores de emisión de la base de datos
+     * Calcular huella de carbono personal
      */
     public function calculatePersonalFootprint(Request $request)
     {
-        $emissionFactors = EmissionFactor::active()->get();
-
-        // Normalizar: vacío o 0 en consumos como null para validación
-        $input = $request->all();
-        foreach ($emissionFactors as $factor) {
-            $key = strtolower(trim($factor->code)) . '_consumption';
-            if (array_key_exists($key, $input)) {
-                $v = $input[$key];
-                if ($v === '' || $v === null || $v === '0' || (is_numeric($v) && (float) $v <= 0)) {
-                    $input[$key] = null;
-                }
-            }
-        }
-        if (array_key_exists('fertilizer_nitrogen_percentage', $input) && ($input['fertilizer_nitrogen_percentage'] === '' || $input['fertilizer_nitrogen_percentage'] === null)) {
-            $input['fertilizer_nitrogen_percentage'] = null;
-        }
-        $request->merge($input);
-
-        $rules = [
+        $validated = $request->validate([
             'name' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',
-            'period' => 'required|in:daily,weekly,monthly,yearly',
+            'water_consumption' => 'nullable|numeric|min:0',
+            'energy_consumption' => 'nullable|numeric|min:0',
+            'gasoline_consumption' => 'nullable|numeric|min:0',
+            'diesel_consumption' => 'nullable|numeric|min:0',
+            'waste_generation' => 'nullable|numeric|min:0',
+            'number_of_animals' => 'nullable|integer|min:0',
+            'synthetic_fertilizers' => 'nullable|numeric|min:0',
             'fertilizer_nitrogen_percentage' => 'nullable|numeric|min:0|max:100',
-        ];
-        foreach ($emissionFactors as $factor) {
-            $key = strtolower(trim($factor->code)) . '_consumption';
-            $rules[$key] = 'nullable|numeric|min:0';
-        }
+            'insecticides' => 'nullable|numeric|min:0',
+            'fungicides' => 'nullable|numeric|min:0',
+            'herbicides' => 'nullable|numeric|min:0',
+            'period' => 'required|in:daily,weekly,monthly,yearly'
+        ]);
 
-        try {
-            $validated = $request->validate($rules);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => implode(' ', $e->validator->errors()->all()),
-                'errors' => $e->errors()
-            ], 422);
-        }
-
-        // Calcular total CO2 con los factores de la base de datos
-        $totalCO2 = 0;
-        $nitrogenPct = isset($validated['fertilizer_nitrogen_percentage']) ? (float) $validated['fertilizer_nitrogen_percentage'] : null;
-
-        foreach ($emissionFactors as $factor) {
-            $key = strtolower(trim($factor->code)) . '_consumption';
-            $quantity = isset($validated[$key]) ? (float) $validated[$key] : 0;
-            if ($quantity <= 0) {
-                continue;
-            }
-            $totalCO2 += $factor->calculateCO2($quantity, $factor->requires_percentage ? $nitrogenPct : null);
-        }
-
-        $totalCO2 = round($totalCO2, 3);
+        // Calcular el total de CO2
+        $totalCO2 = PersonalCarbonCalculation::calculateTotalCO2($validated);
         $validated['total_co2'] = $totalCO2;
 
-        // Campos numéricos que la BD no acepta como NULL (consumos con default 0)
-        $numericNotNull = [
-            'water_consumption', 'energy_consumption', 'gasoline_consumption', 'diesel_consumption',
-            'waste_generation', 'number_of_animals', 'synthetic_fertilizers', 'insecticides',
-            'fungicides', 'herbicides',
-        ];
-        $model = new PersonalCarbonCalculation();
-        $allowed = array_flip($model->getFillable());
-        $fillable = array_intersect_key($validated, $allowed);
-        foreach ($numericNotNull as $key) {
-            if (array_key_exists($key, $allowed) && (!isset($fillable[$key]) || $fillable[$key] === null || $fillable[$key] === '')) {
-                $fillable[$key] = $key === 'number_of_animals' ? 0 : 0.0;
-            }
-        }
-        try {
-            $calculation = PersonalCarbonCalculation::create($fillable);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al guardar el cálculo: ' . $e->getMessage()
-            ], 500);
-        }
+        // Guardar el cálculo
+        $calculation = PersonalCarbonCalculation::create($validated);
 
         return response()->json([
             'success' => true,

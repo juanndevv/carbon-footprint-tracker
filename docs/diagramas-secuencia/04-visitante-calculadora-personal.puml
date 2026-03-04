@@ -1,0 +1,31 @@
+@startuml secuencia_visitante_calculadora_personal
+!theme plain
+title Diagrama de Secuencia: Visitante usa calculadora personal
+
+actor "Visitante" as Visitor
+participant "Navegador" as Browser
+participant "PublicController" as PC
+participant "PersonalCarbonCalculation" as PCC
+
+Visitor -> Browser : Ingresa datos (agua, energía, combustible, etc.)
+Browser -> PC : POST calculatePersonalFootprint(datos)
+activate PC
+
+PC -> PC : Validar (campos numéricos, period)
+PC -> PCC : calculateTotalCO2(validated)
+activate PCC
+PCC -> PCC : Aplicar factores por tipo de consumo\n(agua, energía, gasolina, fertilizantes, etc.)
+PCC --> PC : total_co2 (decimal)
+deactivate PCC
+
+PC -> PC : validated['total_co2'] = totalCO2
+PC -> PCC : create(validated)
+activate PCC
+PCC --> PC : calculation
+deactivate PCC
+
+PC --> Browser : 200 JSON (success, total_co2, calculation_id)
+deactivate PC
+Browser --> Visitor : Muestra resultado (kg CO₂)
+
+@enduml

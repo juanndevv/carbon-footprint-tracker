@@ -29,25 +29,6 @@
             @endforeach
         </div>
 
-        <!-- Filtro de búsqueda -->
-        <div class="bg-white rounded-2xl shadow-lg p-4 mb-6">
-            <form action="{{ route('cefa.huellacarbono.admin.users.index') }}" method="GET" class="flex flex-wrap items-center gap-3">
-                <label for="search-users" class="sr-only">Buscar usuarios</label>
-                <input type="text" 
-                       id="search-users" 
-                       name="search" 
-                       value="{{ request('search') }}" 
-                       placeholder="Buscar por nombre de usuario o email..." 
-                       class="flex-1 min-w-[200px] px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent">
-                <button type="submit" class="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg transition">
-                    <i class="fas fa-search mr-2"></i> Buscar
-                </button>
-                @if(request('search'))
-                    <a href="{{ route('cefa.huellacarbono.admin.users.index') }}" class="px-4 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition">Limpiar</a>
-                @endif
-            </form>
-        </div>
-
         <!-- Tabla de Usuarios -->
         <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
             <div class="bg-gradient-to-r from-teal-600 to-emerald-700 px-6 py-4">
@@ -195,15 +176,14 @@ document.addEventListener('click', function(e) {
 
 document.getElementById('assignRoleForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    var btn = this.querySelector('button[type=submit]');
-    if (btn && btn.disabled) return;
-    if (btn) { btn.disabled = true; btn.dataset.origHtml = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Guardando...'; }
     var userId = document.getElementById('user_id').value;
     var roleId = document.getElementById('assign_role_id').value;
     var url = assignRoleUrl.replace('__ID__', userId);
+    
     var formData = new FormData();
     formData.append('_token', '{{ csrf_token() }}');
     formData.append('role_id', roleId);
+    
     fetch(url, {
         method: 'POST',
         headers: {
@@ -218,13 +198,11 @@ document.getElementById('assignRoleForm').addEventListener('submit', function(e)
                 showToast('success', data.message || 'Rol actualizado');
                 setTimeout(function() { location.reload(); }, 1000);
             } else {
-                if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.origHtml || ''; }
                 showToast('error', data.message || 'Error al asignar rol');
             }
         });
     })
     .catch(function(error) {
-        if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.origHtml || ''; }
         console.error('Error:', error);
         showToast('error', 'Error al asignar rol');
     });

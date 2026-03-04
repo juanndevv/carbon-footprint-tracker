@@ -1,0 +1,32 @@
+@startuml secuencia_admin_edita_consumo
+!theme plain
+title Diagrama de Secuencia: Admin edita registro de consumo
+
+actor "Administrador" as Admin
+participant "Navegador" as Browser
+participant "AdminController" as AC
+participant "DailyConsumption" as DC
+participant "EmissionFactor" as EF
+
+Admin -> Browser : Edita cantidad, observaciones y guarda
+Browser -> AC : PUT editConsumption(id, quantity, nitrogen_percentage, observations)
+activate AC
+
+AC -> AC : checkRol(admin)
+AC -> DC : findOrFail(id)
+activate DC
+DC --> AC : consumption
+deactivate DC
+
+AC -> AC : Validar (quantity, nitrogen_percentage, observations)
+AC -> DC : update(validated)
+activate DC
+note right of DC : No se recalcula CO₂ en este flujo;\nse actualizan solo cantidad y observaciones
+DC --> AC : ok
+deactivate DC
+
+AC --> Browser : 200 JSON (success, consumption con emissionFactor)
+deactivate AC
+Browser --> Admin : Muestra mensaje y datos actualizados
+
+@enduml

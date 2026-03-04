@@ -35,17 +35,13 @@
                     <label class="block text-sm font-medium text-gray-700 mb-2">Fecha Inicio</label>
                     <input type="date" name="start_date" 
                            value="{{ $startDate instanceof \Carbon\Carbon ? $startDate->format('Y-m-d') : $startDate }}"
-                           min="{{ $dateMin }}" max="{{ $dateMax }}"
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                           title="Solo hay registros entre {{ $dateMin }} y {{ $dateMax }}">
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
                 </div>
                 <div class="flex-1 min-w-[200px]">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Fecha Fin</label>
                     <input type="date" name="end_date" 
                            value="{{ $endDate instanceof \Carbon\Carbon ? $endDate->format('Y-m-d') : $endDate }}"
-                           min="{{ $dateMin }}" max="{{ $dateMax }}"
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                           title="Solo hay registros entre {{ $dateMin }} y {{ $dateMax }}">
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
                 </div>
                 <button type="submit" 
                         class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-semibold transition">
@@ -132,19 +128,9 @@
                 </table>
             </div>
             
-            <!-- Paginación: 20 registros por página -->
-            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <p class="text-sm text-gray-600">
-                        <strong>20 registros por página</strong>
-                        @if($consumptions->total() > 0)
-                            · Página {{ $consumptions->currentPage() }} de {{ $consumptions->lastPage() }}
-                        @endif
-                    </p>
-                    <div class="flex-1 min-w-0">
-                        {{ $consumptions->withQueryString()->links('huellacarbono::pagination.tailwind') }}
-                    </div>
-                </div>
+            <!-- Paginación -->
+            <div class="px-6 py-4 bg-gray-50">
+                {{ $consumptions->links() }}
             </div>
         </div>
 

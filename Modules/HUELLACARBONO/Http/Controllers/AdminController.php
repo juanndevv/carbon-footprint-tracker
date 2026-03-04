@@ -11,7 +11,6 @@ use Modules\HUELLACARBONO\Entities\DailyConsumption;
 use Modules\HUELLACARBONO\Entities\ConsumptionRequest;
 use Modules\HUELLACARBONO\Entities\ConsumptionRequestItem;
 use Modules\HUELLACARBONO\Exports\ConsumptionsExport;
-use Modules\HUELLACARBONO\Exports\ConsumptionsFromQueryExport;
 use Modules\HUELLACARBONO\Exports\ByUnitExport;
 use Modules\HUELLACARBONO\Exports\ByFactorExport;
 use Modules\HUELLACARBONO\Exports\SummaryExport;
@@ -80,33 +79,16 @@ class AdminController extends Controller
         ));
     }
 
-    public function productiveUnits(Request $request)
+    public function productiveUnits()
     {
         if (!checkRol('huellacarbono.admin')) {
             abort(403, 'No tienes permisos para acceder a esta sección.');
         }
 
-        $query = ProductiveUnit::with('leader');
-        if ($request->filled('search')) {
-            $term = '%' . $request->search . '%';
-            $query->where(function ($q) use ($term) {
-                $q->where('name', 'like', $term)
-                  ->orWhere('code', 'like', $term)
-                  ->orWhere('description', 'like', $term);
-            });
-        }
-        $units = $query->orderByRaw('CASE WHEN leader_user_id IS NOT NULL THEN 0 ELSE 1 END')->orderBy('name')->get();
-        // Solo usuarios que tienen el rol Líder (según Usuarios) para asignar como líder de unidad
-        $leaderRole = \Modules\SICA\Entities\Role::where('slug', 'huellacarbono.leader')->first();
-        $users = $leaderRole
-            ? User::with('person:id,first_name,first_last_name,second_last_name')
-                ->whereHas('roles', fn ($q) => $q->where('roles.id', $leaderRole->id))
-                ->get(['id', 'nickname', 'email', 'person_id'])
-            : collect();
-        // IDs de usuarios que ya tienen una unidad asignada como líder (para ocultarlos al elegir líder, salvo el actual de la unidad que se edita)
-        $assignedLeaderUserIds = ProductiveUnit::whereNotNull('leader_user_id')->pluck('leader_user_id')->unique()->values()->map(fn ($id) => (string) $id)->toArray();
+        $units = ProductiveUnit::with('leader')->orderBy('name')->get();
+        $users = User::with('person:id,first_name,first_last_name,second_last_name')->get(['id', 'nickname', 'email', 'person_id']);
 
-        return view('huellacarbono::superadmin.units', compact('units', 'users', 'assignedLeaderUserIds'));
+        return view('huellacarbono::superadmin.units', compact('units', 'users'));
     }
 
     public function emissionFactors()
@@ -118,23 +100,18 @@ class AdminController extends Controller
     public function allConsumptions(Request $request)
     {
         $query = DailyConsumption::with(['productiveUnit', 'emissionFactor', 'registeredBy']);
-        if ($request->filled('unit_id')) {
+        if ($request->has('unit_id')) {
             $query->where('productive_unit_id', $request->unit_id);
         }
-        if ($request->filled('start_date')) {
+        if ($request->has('start_date')) {
             $query->where('consumption_date', '>=', $request->start_date);
         }
-        if ($request->filled('end_date')) {
+        if ($request->has('end_date')) {
             $query->where('consumption_date', '<=', $request->end_date);
         }
         $consumptions = $query->orderBy('consumption_date', 'desc')->orderBy('id', 'desc')->paginate(50);
         $units = ProductiveUnit::where('is_active', true)->get();
-        // Rango de fechas con datos para limitar el selector (evitar años sin registros)
-        $dateMin = DailyConsumption::min('consumption_date');
-        $dateMax = DailyConsumption::max('consumption_date');
-        $dateMin = $dateMin ? Carbon::parse($dateMin)->format('Y-m-d') : now()->startOfYear()->format('Y-m-d');
-        $dateMax = $dateMax ? Carbon::parse($dateMax)->format('Y-m-d') : now()->format('Y-m-d');
-        return view('huellacarbono::superadmin.consumptions', compact('consumptions', 'units', 'dateMin', 'dateMax'));
+        return view('huellacarbono::superadmin.consumptions', compact('consumptions', 'units'));
     }
 
     public function reports()
@@ -146,12 +123,7 @@ class AdminController extends Controller
         $totalRecords = DailyConsumption::count();
         $totalCO2 = DailyConsumption::sum('co2_generated');
         $totalUnits = ProductiveUnit::where('is_active', true)->count();
-        // Rango de fechas con datos para limitar selectores en reportes
-        $dateMin = DailyConsumption::min('consumption_date');
-        $dateMax = DailyConsumption::max('consumption_date');
-        $dateMin = $dateMin ? Carbon::parse($dateMin)->format('Y-m-d') : now()->startOfYear()->format('Y-m-d');
-        $dateMax = $dateMax ? Carbon::parse($dateMax)->format('Y-m-d') : now()->format('Y-m-d');
-        return view('huellacarbono::superadmin.reports', compact('units', 'totalRecords', 'totalCO2', 'totalUnits', 'dateMin', 'dateMax'));
+        return view('huellacarbono::superadmin.reports', compact('units', 'totalRecords', 'totalCO2', 'totalUnits'));
     }
 
     public function charts()
@@ -185,24 +157,12 @@ class AdminController extends Controller
         return view('huellacarbono::superadmin.charts', compact('weeklyTotal', 'monthlyTotal', 'quarterlyTotal', 'yearlyTotal', 'chartData', 'units'));
     }
 
-    public function users(Request $request)
+    public function users()
     {
-        $query = User::with(['roles' => function ($q) {
+        $users = User::with(['roles' => function ($q) {
             $q->where('slug', 'like', 'huellacarbono.%');
-        }]);
-        if ($request->filled('search')) {
-            $term = '%' . $request->search . '%';
-            $query->where(function ($q) use ($term) {
-                $q->where('nickname', 'like', $term)->orWhere('email', 'like', $term);
-            });
-        }
-        $users = $query->orderByRaw(
-            "(SELECT COUNT(*) FROM role_user INNER JOIN roles ON roles.id = role_user.role_id WHERE role_user.user_id = users.id AND roles.slug LIKE 'huellacarbono.%') DESC"
-        )->orderBy('nickname')->paginate(20)->withQueryString();
-        // Roles asignables: solo Admin y Líder (no mostrar superadmin si existe en BD)
-        $roles = \Modules\SICA\Entities\Role::where('slug', 'like', 'huellacarbono.%')
-            ->where('slug', '!=', 'huellacarbono.superadmin')
-            ->get();
+        }])->paginate(20);
+        $roles = \Modules\SICA\Entities\Role::where('slug', 'like', 'huellacarbono.%')->get();
         return view('huellacarbono::superadmin.users', compact('users', 'roles'));
     }
 
@@ -210,25 +170,12 @@ class AdminController extends Controller
     {
         $validated = $request->validate(['leader_user_id' => 'nullable|exists:users,id']);
         $unit = ProductiveUnit::findOrFail($id);
-        $previousLeaderId = $unit->leader_user_id;
         $unit->leader_user_id = $validated['leader_user_id'];
         $unit->save();
-
-        // Si se quitó el líder de esta unidad: quitar rol Líder al usuario anterior si ya no tiene ninguna unidad asignada
-        if ($previousLeaderId) {
-            $stillLeaderOfSomeUnit = ProductiveUnit::where('leader_user_id', $previousLeaderId)->exists();
-            if (!$stillLeaderOfSomeUnit) {
-                $leaderRole = \Modules\SICA\Entities\Role::where('slug', 'huellacarbono.leader')->first();
-                if ($leaderRole) {
-                    User::find($previousLeaderId)?->roles()->detach($leaderRole->id);
-                }
-            }
-        }
-
         if ($validated['leader_user_id']) {
             $user = User::find($validated['leader_user_id']);
             $role = \Modules\SICA\Entities\Role::where('slug', 'huellacarbono.leader')->first();
-            if ($role && $user) {
+            if ($role) {
                 $user->roles()->syncWithoutDetaching([$role->id]);
             }
         }
@@ -329,18 +276,13 @@ class AdminController extends Controller
     public function storeEmissionFactor(Request $request)
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255', 'regex:/^[^0-9]*$/'],
-            'code' => ['required', 'string', 'max:50', 'unique:hc_emission_factors,code', 'regex:/^[^0-9]*$/'],
-            'unit' => ['required', 'string', 'max:50', 'regex:/^[^0-9]*$/'],
-            'factor' => 'required|numeric|min:0.0000001',
-            'description' => ['nullable', 'string', 'regex:/^[^0-9]*$/'],
+            'name' => 'required|string|max:255',
+            'code' => 'required|string|max:50|unique:hc_emission_factors,code',
+            'unit' => 'required|string|max:50',
+            'factor' => 'required|numeric|min:0',
+            'description' => 'nullable|string',
             'requires_percentage' => 'nullable|boolean',
             'order' => 'nullable|integer|min:0'
-        ], [
-            'name.regex' => 'El nombre no debe contener números.',
-            'code.regex' => 'El código no debe contener números.',
-            'unit.regex' => 'La unidad de medida no debe contener números.',
-            'description.regex' => 'La descripción no debe contener números.',
         ]);
         if (!isset($validated['order'])) {
             $validated['order'] = (int) EmissionFactor::max('order') + 1;
@@ -355,18 +297,13 @@ class AdminController extends Controller
     {
         $factor = EmissionFactor::findOrFail($id);
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255', 'regex:/^[^0-9]*$/'],
-            'code' => ['required', 'string', 'max:50', 'regex:/^[^0-9]*$/'],
-            'unit' => ['required', 'string', 'max:50', 'regex:/^[^0-9]*$/'],
-            'factor' => 'required|numeric|min:0.0000001',
-            'description' => ['nullable', 'string', 'regex:/^[^0-9]*$/'],
+            'name' => 'required|string|max:255',
+            'code' => 'required|string|max:50',
+            'unit' => 'required|string|max:50',
+            'factor' => 'required|numeric|min:0',
+            'description' => 'nullable|string',
             'requires_percentage' => 'boolean',
             'order' => 'required|integer|min:0'
-        ], [
-            'name.regex' => 'El nombre no debe contener números.',
-            'code.regex' => 'El código no debe contener números.',
-            'unit.regex' => 'La unidad de medida no debe contener números.',
-            'description.regex' => 'La descripción no debe contener números.',
         ]);
         $factor->update($validated);
         return response()->json(['success' => true, 'message' => 'Factor actualizado exitosamente', 'factor' => $factor]);
@@ -398,8 +335,7 @@ class AdminController extends Controller
         }
         $requests = ConsumptionRequest::with(['productiveUnit', 'requestedBy', 'items.emissionFactor'])
             ->orderBy('created_at', 'desc')
-            ->paginate(15)
-            ->withQueryString();
+            ->paginate(20);
         return view('huellacarbono::superadmin.consumption_requests', compact('requests'));
     }
 
@@ -412,17 +348,7 @@ class AdminController extends Controller
         if ($requestModel->status !== 'pending') {
             return response()->json(['success' => false, 'message' => 'La solicitud ya fue procesada'], 400);
         }
-        $created = 0;
-        $skippedDuplicates = [];
         foreach ($requestModel->items as $item) {
-            $exists = DailyConsumption::where('productive_unit_id', $requestModel->productive_unit_id)
-                ->where('emission_factor_id', $item->emission_factor_id)
-                ->where('consumption_date', $requestModel->consumption_date)
-                ->exists();
-            if ($exists) {
-                $skippedDuplicates[] = $item->emissionFactor->name ?? 'Factor #' . $item->emission_factor_id;
-                continue;
-            }
             $factor = $item->emissionFactor;
             $co2 = $item->quantity * $factor->factor;
             if ($factor->requires_percentage && $item->nitrogen_percentage) {
@@ -438,18 +364,13 @@ class AdminController extends Controller
                 'co2_generated' => round($co2, 3),
                 'observations' => 'Registro aprobado por Admin (solicitud #' . $requestModel->id . ')'
             ]);
-            $created++;
         }
         $requestModel->update([
             'status' => 'approved',
             'reviewed_by' => Auth::id(),
             'reviewed_at' => now()
         ]);
-        $message = 'Solicitud aprobada. Consumos registrados.';
-        if (!empty($skippedDuplicates)) {
-            $message .= ' Ya existían registros para: ' . implode(', ', array_slice($skippedDuplicates, 0, 5)) . (count($skippedDuplicates) > 5 ? ' (y otros).' : '. No se crearon duplicados.');
-        }
-        return response()->json(['success' => true, 'message' => $message]);
+        return response()->json(['success' => true, 'message' => 'Solicitud aprobada. Consumos registrados.']);
     }
 
     public function rejectConsumptionRequest(Request $request, $id)
@@ -475,14 +396,6 @@ class AdminController extends Controller
         $validated = $request->validate(['role_id' => 'nullable|exists:roles,id']);
         $user = User::findOrFail($id);
         $hcRoleIds = \Modules\SICA\Entities\Role::where('slug', 'like', 'huellacarbono.%')->pluck('id');
-        $leaderRole = \Modules\SICA\Entities\Role::where('slug', 'huellacarbono.leader')->first();
-
-        // Si el nuevo rol no es Líder (o se quita el rol), quitar a este usuario como líder de cualquier unidad
-        $newRoleIsLeader = $leaderRole && !empty($validated['role_id']) && (int) $validated['role_id'] === (int) $leaderRole->id;
-        if (!$newRoleIsLeader) {
-            ProductiveUnit::where('leader_user_id', $user->id)->update(['leader_user_id' => null]);
-        }
-
         $user->roles()->detach($hcRoleIds);
         if (!empty($validated['role_id'])) {
             $user->roles()->attach($validated['role_id']);
@@ -491,40 +404,13 @@ class AdminController extends Controller
         return response()->json(['success' => true, 'message' => 'Acceso a Huella de Carbono quitado correctamente']);
     }
 
-    public function getConsumption($id)
-    {
-        if (!checkRol('huellacarbono.admin')) {
-            return response()->json(['error' => 'Sin permisos'], 403);
-        }
-        $consumption = DailyConsumption::with(['emissionFactor', 'productiveUnit'])->findOrFail($id);
-        return response()->json([
-            'id' => $consumption->id,
-            'consumption_date' => $consumption->consumption_date->format('d/m/Y'),
-            'quantity' => (float) $consumption->quantity,
-            'nitrogen_percentage' => $consumption->nitrogen_percentage !== null ? (float) $consumption->nitrogen_percentage : null,
-            'observations' => $consumption->observations ?? '',
-            'co2_generated' => (float) $consumption->co2_generated,
-            'emission_factor' => [
-                'name' => $consumption->emissionFactor->name ?? 'N/A',
-                'unit' => $consumption->emissionFactor->unit ?? '',
-                'requires_percentage' => (bool) ($consumption->emissionFactor->requires_percentage ?? false),
-            ],
-            'productive_unit' => ['name' => $consumption->productiveUnit->name ?? 'N/A'],
-        ]);
-    }
-
     public function editConsumption(Request $request, $id)
     {
-        if (!checkRol('huellacarbono.admin')) {
-            return response()->json(['success' => false, 'message' => 'Sin permisos'], 403);
-        }
         $consumption = DailyConsumption::findOrFail($id);
         $validated = $request->validate([
-            'quantity' => 'required|numeric|min:0.001',
+            'quantity' => 'required|numeric|min:0',
             'nitrogen_percentage' => 'nullable|numeric|min:0|max:100',
-            'observations' => 'nullable|string|max:500'
-        ], [
-            'quantity.min' => 'La cantidad debe ser mayor que 0. No se permite guardar valor 0.',
+            'observations' => 'nullable|string'
         ]);
         $consumption->update($validated);
         return response()->json([
@@ -548,52 +434,36 @@ class AdminController extends Controller
         }
         $period = $request->get('period', 'current_month');
         [$startDate, $endDate] = $this->getDateRange($period, $request);
-        $baseQuery = DailyConsumption::whereBetween('consumption_date', [$startDate, $endDate]);
-        if ($request->filled('unit_id')) {
-            $baseQuery->where('productive_unit_id', $request->unit_id);
+        $query = DailyConsumption::with(['productiveUnit', 'emissionFactor', 'registeredBy'])
+            ->whereBetween('consumption_date', [$startDate, $endDate]);
+        if ($request->has('unit_id') && $request->unit_id != '') {
+            $query->where('productive_unit_id', $request->unit_id);
         }
-
-        $totalCO2 = (float) (clone $baseQuery)->sum('co2_generated');
-        $totalRecords = (clone $baseQuery)->count();
-        if ($totalRecords === 0 || $totalCO2 == 0) {
-            if ($request->filled('unit_id')) {
+        $consumptions = $query->orderBy('consumption_date', 'desc')->get();
+        if ($consumptions->isEmpty()) {
+            if ($request->has('unit_id') && $request->unit_id != '') {
                 return response()->view('huellacarbono::reports.empty', [
-                    'message' => 'No hay consumos registrados para la unidad seleccionada en el período.'
+                    'message' => 'No hay consumos registrados para la unidad seleccionada en el período (año actual).'
                 ], 200)->header('Content-Type', 'text/html');
             }
             return back()->with('error', 'No hay datos para el período seleccionado');
         }
-
-        $byUnitRows = (clone $baseQuery)->selectRaw('productive_unit_id, COUNT(*) as count, SUM(co2_generated) as total_co2')
-            ->groupBy('productive_unit_id')->orderByDesc('total_co2')->get();
-        $unitIds = $byUnitRows->pluck('productive_unit_id')->unique()->filter()->values();
-        $units = $unitIds->isEmpty() ? collect() : ProductiveUnit::whereIn('id', $unitIds)->pluck('name', 'id');
-        $byUnit = $byUnitRows->map(fn ($r) => (object)[
-            'productiveUnit' => (object)['name' => $units[$r->productive_unit_id] ?? 'N/A'],
-            'count' => (int) $r->count,
-            'total_co2' => (float) $r->total_co2
-        ]);
-
-        $byFactorRows = (clone $baseQuery)->selectRaw('emission_factor_id, COUNT(*) as count, SUM(co2_generated) as total_co2')
-            ->groupBy('emission_factor_id')->orderByDesc('total_co2')->get();
-        $factorIds = $byFactorRows->pluck('emission_factor_id')->unique()->filter()->values();
-        $factors = $factorIds->isEmpty() ? collect() : EmissionFactor::whereIn('id', $factorIds)->get(['id', 'name', 'unit'])->keyBy('id');
-        $byFactor = $byFactorRows->map(fn ($r) => (object)[
-            'emissionFactor' => (object)[
-                'name' => $factors[$r->emission_factor_id]->name ?? 'N/A',
-                'unit' => $factors[$r->emission_factor_id]->unit ?? ''
-            ],
-            'count' => (int) $r->count,
-            'total_co2' => (float) $r->total_co2
-        ]);
-
-        $detailLimit = 800;
-        $consumptions = (clone $baseQuery)->orderBy('consumption_date', 'desc')
-            ->limit($detailLimit)
-            ->with(['productiveUnit:id,name', 'emissionFactor:id,name,unit'])
-            ->get();
-
-        $pdf = PDF::loadView('huellacarbono::reports.pdf', compact('consumptions', 'totalCO2', 'totalRecords', 'startDate', 'endDate', 'byUnit', 'byFactor', 'detailLimit'));
+        $totalCO2 = $consumptions->sum('co2_generated');
+        $byUnit = $consumptions->groupBy('productive_unit_id')->map(function ($items) {
+            return (object)[
+                'productiveUnit' => $items->first()->productiveUnit,
+                'count' => $items->count(),
+                'total_co2' => $items->sum('co2_generated')
+            ];
+        })->sortByDesc('total_co2');
+        $byFactor = $consumptions->groupBy('emission_factor_id')->map(function ($items) {
+            return (object)[
+                'emissionFactor' => $items->first()->emissionFactor,
+                'count' => $items->count(),
+                'total_co2' => $items->sum('co2_generated')
+            ];
+        })->sortByDesc('total_co2');
+        $pdf = PDF::loadView('huellacarbono::reports.pdf', compact('consumptions', 'totalCO2', 'startDate', 'endDate', 'byUnit', 'byFactor'));
         $pdf->setPaper('letter', 'portrait')->setOptions(['isHtml5ParserEnabled' => true, 'isPhpEnabled' => true, 'defaultFont' => 'Arial']);
         $filename = 'reporte_huella_carbono_' . $startDate->format('Y-m-d') . '_' . $endDate->format('Y-m-d') . '.pdf';
         return $pdf->download($filename);
@@ -609,15 +479,14 @@ class AdminController extends Controller
         [$startDate, $endDate] = $this->getDateRange($period, $request);
         $startStr = $startDate->format('Y-m-d');
         $endStr = $endDate->format('Y-m-d');
+        $query = DailyConsumption::with(['productiveUnit', 'emissionFactor', 'registeredBy'])
+            ->whereBetween('consumption_date', [$startStr, $endStr]);
         $unitId = $request->filled('unit_id') ? (int) $request->unit_id : null;
-
-        $baseQuery = DailyConsumption::whereBetween('consumption_date', [$startStr, $endStr]);
         if ($unitId > 0) {
-            $baseQuery->where('productive_unit_id', $unitId);
+            $query->where('productive_unit_id', $unitId);
         }
-
-        $exists = (clone $baseQuery)->exists();
-        if (!$exists) {
+        $consumptions = $query->orderBy('consumption_date', 'desc')->get();
+        if ($consumptions->isEmpty()) {
             if ($unitId > 0) {
                 return response()->view('huellacarbono::reports.empty', [
                     'message' => 'No hay consumos registrados para la unidad seleccionada en el período elegido.',
@@ -628,38 +497,16 @@ class AdminController extends Controller
             }
             return back()->with('error', 'No hay datos para exportar');
         }
-
         $filename = 'huella_carbono_' . $startDate->format('Y-m-d') . '_' . $endDate->format('Y-m-d') . '.xlsx';
-        $exportLimit = 3000;
-
         switch ($dataType) {
             case 'by_unit':
-                $consumptions = (clone $baseQuery)->orderBy('consumption_date', 'desc')->limit($exportLimit)->with(['productiveUnit:id,name', 'emissionFactor:id,name,unit'])->get();
                 return Excel::download(new ByUnitExport($consumptions), $filename);
             case 'by_factor':
-                $consumptions = (clone $baseQuery)->orderBy('consumption_date', 'desc')->limit($exportLimit)->with(['productiveUnit:id,name', 'emissionFactor:id,name,unit'])->get();
                 return Excel::download(new ByFactorExport($consumptions), $filename);
             case 'summary':
-                $consumptions = (clone $baseQuery)->orderBy('consumption_date', 'desc')->limit($exportLimit)->with(['productiveUnit:id,name', 'emissionFactor:id,name,unit'])->get();
                 return Excel::download(new SummaryExport($consumptions), $filename);
             default:
-                $query = (clone $baseQuery)->orderBy('hc_daily_consumptions.consumption_date', 'desc')
-                    ->limit($exportLimit)
-                    ->leftJoin('hc_productive_units', 'hc_daily_consumptions.productive_unit_id', '=', 'hc_productive_units.id')
-                    ->leftJoin('hc_emission_factors', 'hc_daily_consumptions.emission_factor_id', '=', 'hc_emission_factors.id')
-                    ->leftJoin('users', 'hc_daily_consumptions.registered_by', '=', 'users.id')
-                    ->select(
-                        'hc_daily_consumptions.id',
-                        'hc_daily_consumptions.consumption_date',
-                        'hc_productive_units.name as unit_name',
-                        'hc_emission_factors.name as factor_name',
-                        'hc_daily_consumptions.quantity',
-                        'hc_emission_factors.unit as factor_unit',
-                        'hc_daily_consumptions.co2_generated',
-                        'users.nickname as registered_by_nickname',
-                        'hc_daily_consumptions.observations'
-                    );
-                return Excel::download(new ConsumptionsFromQueryExport($query, 'Huella de Carbono'), $filename);
+                return Excel::download(new ConsumptionsExport($consumptions, 'Huella de Carbono'), $filename);
         }
     }
 
